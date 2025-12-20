@@ -1,1 +1,3 @@
 streamlit
+streamlit-extras>=0.3.0
+streamlit_javascript
