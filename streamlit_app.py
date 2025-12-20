@@ -1,102 +1,116 @@
 import streamlit as st
-import streamlit.components.v1 as components
+import random
+import datetime
+import json
+import os
 
-def snake_game():
-    st.header("🎮 Reward Snake Game")
-    st.write("Use arrow keys or on-screen buttons to control the snake. 🍎")
+from snake_game import snake_game
 
-    # Direction controls via buttons
-    cols = st.columns(3)
-    if cols[1].button("⬆️") and st.session_state.get("direction", "RIGHT") != "DOWN":
-        st.session_state.direction = "UP"
-    cols = st.columns(3)
-    if cols[0].button("⬅️") and st.session_state.get("direction", "RIGHT") != "RIGHT":
-        st.session_state.direction = "LEFT"
-    if cols[2].button("➡️") and st.session_state.get("direction", "RIGHT") != "LEFT":
-        st.session_state.direction = "RIGHT"
-    cols = st.columns(3)
-    if cols[1].button("⬇️") and st.session_state.get("direction", "RIGHT") != "UP":
-        st.session_state.direction = "DOWN"
+HISTORY_FILE = "history.json"
 
-    # Initialize direction
-    if "direction" not in st.session_state:
-        st.session_state.direction = "RIGHT"
+# ------------------- Helpers -------------------
+def load_history():
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, "r") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, ValueError):
+            return {}
+    return {}
 
-    # Embed JS Snake game
-    components.html(
-        f"""
-        <style>
-            canvas {{background-color: #000; display:block; margin:auto;}}
-        </style>
-        <canvas id="snakeCanvas" width="400" height="400"></canvas>
-        <script>
-            const canvas = document.getElementById("snakeCanvas");
-            const ctx = canvas.getContext("2d");
-            const box = 20;
-            const canvasSize = 400;
+def save_history(history):
+    with open(HISTORY_FILE, "w") as f:
+        json.dump(history, f, indent=2)
 
-            let snake = [{x: 9*box, y: 9*box}];
-            let food = {{x: Math.floor(Math.random()*20)*box, y: Math.floor(Math.random()*20)*box}};
-            let direction = "{st.session_state.direction}";
-            let score = 0;
+def generate_question():
+    """Generate a Primary 1 question with non-negative result."""
+    q_type = random.choice(["add_sub", "mul"])
+    if q_type == "add_sub":
+        while True:
+            a, b, c = random.randint(1, 60), random.randint(1, 60), random.randint(1, 60)
+            result = a + b - c
+            if result >= 0:
+                break
+        expr = f"{a} + {b} - {c}"
+        answer = result
+    else:
+        a, b = random.randint(2, 9), random.randint(2, 9)
+        expr = f"{a} × {b}"
+        answer = a * b
+    return expr, answer
 
-            // Arrow keys for JS (optional if using Python buttons)
-            document.addEventListener("keydown", function(event){{
-                if(event.key === "ArrowUp" && direction != "DOWN") direction = "UP";
-                if(event.key === "ArrowDown" && direction != "UP") direction = "DOWN";
-                if(event.key === "ArrowLeft" && direction != "RIGHT") direction = "LEFT";
-                if(event.key === "ArrowRight" && direction != "LEFT") direction = "RIGHT";
-            }});
+# ------------------- Session State -------------------
+if "questions" not in st.session_state:
+    st.session_state.questions = [generate_question() for _ in range(10)]
+    st.session_state.answers = [""] * 10
+    st.session_state.completed = False
+    st.session_state.reward_unlocked = False
 
-            function draw() {{
-                ctx.fillStyle = "black";
-                ctx.fillRect(0,0,canvasSize,canvasSize);
+history = load_history()
 
-                for(let i=0; i<snake.length; i++){{
-                    ctx.fillStyle = (i==0) ? "lime" : "green";
-                    ctx.fillRect(snake[i].x, snake[i].y, box, box);
-                }}
+# ------------------- Page Selection -------------------
+pages = ["Math Practice"]
+if st.session_state.get("reward_unlocked", False):
+    pages.append("Reward Game")
 
-                ctx.fillStyle = "red";
-                ctx.fillRect(food.x, food.y, box, box);
+page = st.sidebar.radio("📚 Pages", pages)
 
-                let head = {{x: snake[0].x, y: snake[0].y}};
-                if(direction==="UP") head.y -= box;
-                if(direction==="DOWN") head.y += box;
-                if(direction==="LEFT") head.x -= box;
-                if(direction==="RIGHT") head.x += box;
+# ------------------- Math Practice -------------------
+if page == "Math Practice":
+    st.title("🧮 Primary 1 Math Practice")
 
-                if(head.x < 0 || head.x >= canvasSize || head.y < 0 || head.y >= canvasSize || collision(head, snake)){{
-                    clearInterval(game);
-                    alert("💀 Game Over! Score: " + score);
-                    return;
-                }}
+    # Sidebar calendar
+    st.sidebar.header("📅 Progress Tracker")
+    selected_date = st.sidebar.date_input("Pick a date to view history:")
+    if str(selected_date) in history:
+        st.sidebar.success("✅ Completed")
+    else:
+        st.sidebar.warning("❌ Not completed")
 
-                snake.unshift(head);
+    # Show historical record
+    if str(selected_date) in history:
+        st.header(f"Results on {selected_date}")
+        for i, record in enumerate(history[str(selected_date)], 1):
+            symbol = "✅" if record["ans"] == record["correct"] else "❌"
+            st.write(f"Q{i}: {record['q']} → Your answer: {record['ans']} {symbol}")
+        st.stop()
 
-                if(head.x === food.x && head.y === food.y){{
-                    score++;
-                    food = {{x: Math.floor(Math.random()*20)*box, y: Math.floor(Math.random()*20)*box}};
-                }} else {{
-                    snake.pop();
-                }}
+    st.subheader("Solve these 10 questions:")
 
-                ctx.fillStyle = "white";
-                ctx.font = "20px Arial";
-                ctx.fillText("Score: "+score, 10, 20);
-            }}
+    for i, (q, ans) in enumerate(st.session_state.questions):
+        if not st.session_state.completed:
+            st.session_state.answers[i] = st.text_input(f"Q{i+1}: {q} =", st.session_state.answers[i])
 
-            function collision(head, array){{
-                for(let i=0;i<array.length;i++){{
-                    if(head.x === array[i].x && head.y === array[i].y){{
-                        return true;
-                    }}
-                }}
-                return false;
-            }}
+    if st.button("✅ Submit answers") and not st.session_state.completed:
+        results = []
+        score = 0
+        st.subheader("✅ Results:")
+        for i, ((q, correct), user_ans) in enumerate(zip(st.session_state.questions, st.session_state.answers)):
+            try:
+                ua = int(user_ans)
+            except:
+                ua = None
+            is_correct = (ua == correct)
+            symbol = "✅" if is_correct else f"❌ (Correct: {correct})"
+            st.write(f"Q{i+1}: {q} → {ua} {symbol}")
+            if is_correct:
+                score += 1
+            results.append({"q": q, "ans": ua, "correct": correct})
 
-            let game = setInterval(draw, 200);
-        </script>
-        """,
-        height=450,
-    )
+        st.success(f"🎉 You got {score}/10 correct!")
+
+        # Save history
+        today = str(datetime.date.today())
+        history[today] = results
+        save_history(history)
+        st.session_state.completed = True
+
+        # Unlock reward if perfect score
+        if score == 10:
+            st.session_state.reward_unlocked = True
+            st.success("🎁 Perfect score! Reward game unlocked!")
+            st.stop()  # Force rerun to show Reward Game page
+
+# ------------------- Reward Game -------------------
+elif page == "Reward Game":
+    snake_game()
