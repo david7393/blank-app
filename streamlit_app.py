@@ -109,7 +109,7 @@ if page == "Math Practice":
         if score == 10:
             st.session_state.reward_unlocked = True
             st.success("🎁 Perfect score! Reward game unlocked!")
-            st.stop()  # Force rerun to show Reward Game page
+            st.experimental_rerun()  # Force rerun to show Reward Game page
 
 # ------------------- Reward Game -------------------
 elif page == "Reward Game":
