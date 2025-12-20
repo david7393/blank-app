@@ -49,11 +49,21 @@ if "questions" not in st.session_state:
 history = load_history()
 
 # ------------------- Page Selection -------------------
+if "page" not in st.session_state:
+    st.session_state.page = "Math Practice"
+
 pages = ["Math Practice"]
 if st.session_state.get("reward_unlocked", False):
     pages.append("Reward Game")
 
-page = st.sidebar.radio("📚 Pages", pages)
+# Preserve the last selected page (or use Math Practice)
+try:
+    default_index = pages.index(st.session_state.get("page", "Math Practice"))
+except ValueError:
+    default_index = 0
+
+page = st.sidebar.radio("📚 Pages", pages, index=default_index)
+st.session_state.page = page
 
 # ------------------- Math Practice -------------------
 if page == "Math Practice":
@@ -109,7 +119,14 @@ if page == "Math Practice":
         if score == 10:
             st.session_state.reward_unlocked = True
             st.success("🎁 Perfect score! Reward game unlocked!")
-            st.experimental_rerun()  # Force rerun to show Reward Game page
+            # Set the page to Reward Game so the sidebar reflects the new state
+            st.session_state.page = "Reward Game"
+            # Directly show the reward game in this run (no experimental_rerun in newer Streamlit)
+            try:
+                snake_game()
+            except Exception:
+                # If displaying the game fails for any reason, continue without crashing
+                pass
 
 # ------------------- Reward Game -------------------
 elif page == "Reward Game":
