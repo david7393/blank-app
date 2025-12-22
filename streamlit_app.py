@@ -105,9 +105,12 @@ if page == "Home":
         pw_val = st.text_input("Password", type="password", key="pw_input")
         if st.button("Submit Password", key="submit_pw"):
             if pw_val == SECRET_PW:
+                # set the current user to the profile that was selected
+                st.session_state.current_user = pw_prompt
                 st.session_state.page = "Translate Chat"
-                # clear prompt
-                del st.session_state["pw_prompt"]
+                # clear prompt and input
+                st.session_state.pop("pw_prompt", None)
+                st.session_state.pop("pw_input", None)
             else:
                 st.error("Incorrect password")
 
