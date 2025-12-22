@@ -230,7 +230,13 @@ def main():
                 return None
             return None
 
-        openrouter_key = _safe_secret_get("OPENROUTER_API_KEY") or os.environ.get("OPENROUTER_API_KEY")
+        # Accept either OPENROUTER_API_KEY (new name) or DEEPSEEK_API_KEY (legacy name)
+        openrouter_key = (
+            _safe_secret_get("OPENROUTER_API_KEY")
+            or _safe_secret_get("DEEPSEEK_API_KEY")
+            or os.environ.get("OPENROUTER_API_KEY")
+            or os.environ.get("DEEPSEEK_API_KEY")
+        )
         github_token = _safe_secret_get("GITHUB_TOKEN") or os.environ.get("GITHUB_TOKEN")
         gist_id = _safe_secret_get("GITHUB_GIST_ID") or os.environ.get("GITHUB_GIST_ID")
 
