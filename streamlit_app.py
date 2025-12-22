@@ -50,84 +50,98 @@ history = load_history()
 
 # ------------------- Page Selection -------------------
 if "page" not in st.session_state:
-    st.session_state.page = "Math Practice"
+    st.session_state.page = "Home"
 
-pages = ["Math Practice"]
+# Build available pages. Home is the front page with buttons.
+pages = ["Home", "Practice Page", "Lucas", "Translate Chat", "Ella", "Meimei"]
 if st.session_state.get("reward_unlocked", False):
     pages.append("Reward Game")
 
-# Preserve the last selected page (or use Math Practice)
+# Preserve the last selected page 
 try:
-    default_index = pages.index(st.session_state.get("page", "Math Practice"))
+    default_index = pages.index(st.session_state.get("page", "Home"))
 except ValueError:
     default_index = 0
 
 page = st.sidebar.radio("📚 Pages", pages, index=default_index)
 st.session_state.page = page
 
-# ------------------- Math Practice -------------------
-if page == "Math Practice":
-    st.title("🧮 Primary 1 Math Practice")
+# ------------------- Home / Front Page -------------------
+if page == "Home":
+    st.title("Welcome")
+    st.write("Choose a profile to continue:")
 
-    # Sidebar calendar
-    st.sidebar.header("📅 Progress Tracker")
-    selected_date = st.sidebar.date_input("Pick a date to view history:")
-    if str(selected_date) in history:
-        st.sidebar.success("✅ Completed")
-    else:
-        st.sidebar.warning("❌ Not completed")
+    # passwords for protected profiles; required value is '1314'
+    SECRET_PW = "1314"
 
-    # Show historical record
-    if str(selected_date) in history:
-        st.header(f"Results on {selected_date}")
-        for i, record in enumerate(history[str(selected_date)], 1):
-            symbol = "✅" if record["ans"] == record["correct"] else "❌"
-            st.write(f"Q{i}: {record['q']} → Your answer: {record['ans']} {symbol}")
-        st.stop()
+    # First row: Ella, Meimei, Lucase
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        if st.button("👧 Ella"):
+            st.session_state.page = "Ella"
+    with c2:
+        if st.button("🧒 Meimei"):
+            st.session_state.page = "Meimei"
+    with c3:
+        if st.button("🧑‍🎓 Lucas"):
+            st.session_state.page = "Lucas"
 
-    st.subheader("Solve these 10 questions:")
+    # Second row: David, Mika, Wai Wai
+    c4, c5, c6 = st.columns(3)
+    with c4:
+        if st.button("🕵️ David"):
+            st.session_state.pw_prompt = "David"
+    with c5:
+        if st.button("🎧 Mika"):
+            st.session_state.pw_prompt = "Mika"
+    with c6:
+        if st.button("🎨 Wai Wai"):
+            st.session_state.pw_prompt = "Wai Wai"
 
-    for i, (q, ans) in enumerate(st.session_state.questions):
-        if not st.session_state.completed:
-            st.session_state.answers[i] = st.text_input(f"Q{i+1}: {q} =", st.session_state.answers[i])
+    # Inline password prompt (replacement for modal)
+    pw_prompt = st.session_state.get("pw_prompt")
+    if pw_prompt:
+        st.markdown(f"**Enter password for {pw_prompt}:**")
+        pw_val = st.text_input("Password", type="password", key="pw_input")
+        if st.button("Submit Password", key="submit_pw"):
+            if pw_val == SECRET_PW:
+                st.session_state.page = "Translate Chat"
+                # clear prompt
+                del st.session_state["pw_prompt"]
+            else:
+                st.error("Incorrect password")
 
-    if st.button("✅ Submit answers") and not st.session_state.completed:
-        results = []
-        score = 0
-        st.subheader("✅ Results:")
-        for i, ((q, correct), user_ans) in enumerate(zip(st.session_state.questions, st.session_state.answers)):
-            try:
-                ua = int(user_ans)
-            except:
-                ua = None
-            is_correct = (ua == correct)
-            symbol = "✅" if is_correct else f"❌ (Correct: {correct})"
-            st.write(f"Q{i+1}: {q} → {ua} {symbol}")
-            if is_correct:
-                score += 1
-            results.append({"q": q, "ans": ua, "correct": correct})
+    # Stop further rendering when on Home
+    st.stop()
 
-        st.success(f"🎉 You got {score}/10 correct!")
+# ------------------- Practice Page (placeholder) -------------------
+if page == "Practice Page":
+    st.title("Practice Page")
+    st.write("This is an empty practice page placeholder.")
+    st.stop()
 
-        # Save history
-        today = str(datetime.date.today())
-        history[today] = results
-        save_history(history)
-        st.session_state.completed = True
+# ------------------- Lucase page (load module) -------------------
+if page == "Lucas":
+    try:
+        import lucas
+    except Exception:
+        st.error("Failed to load Lucase page")
+    st.stop()
 
-        # Unlock reward if perfect score
-        if score == 10:
-            st.session_state.reward_unlocked = True
-            st.success("🎁 Perfect score! Reward game unlocked!")
-            # Set the page to Reward Game so the sidebar reflects the new state
-            st.session_state.page = "Reward Game"
-            # Directly show the reward game in this run (no experimental_rerun in newer Streamlit)
-            try:
-                snake_game()
-            except Exception:
-                # If displaying the game fails for any reason, continue without crashing
-                pass
+# ------------------- Translate Chat page (load module) -------------------
+if page == "Translate Chat":
+    try:
+        import translate_chat
+    except Exception:
+        st.error("Failed to load Translate Chat page")
+    st.stop()
 
-# ------------------- Reward Game -------------------
-elif page == "Reward Game":
-    snake_game()
+# ------------------- Ella / Meimei pages (load module) -------------------
+if page == "Ella" or page == "Meimei":
+    try:
+        import ella_math
+        # call the page's renderer function
+        ella_math.show()
+    except Exception:
+        st.error("Failed to load Ella/Meimei page")
+    st.stop()
