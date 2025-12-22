@@ -132,8 +132,12 @@ if page == "Lucas":
 if page == "Translate Chat":
     try:
         import translate_chat
-    except Exception:
+        # translate_chat is import-safe and exposes a `main()` function
+        # that must be called to render the page (it does not render on import).
+        translate_chat.main()
+    except Exception as e:
         st.error("Failed to load Translate Chat page")
+        st.exception(e)
     st.stop()
 
 # ------------------- Ella / Meimei pages (load module) -------------------

@@ -222,19 +222,17 @@ def main():
     # Use item access on `st.secrets` first (works on Streamlit Cloud),
     # then fall back to environment variables.
     try:
-        try:
-            openrouter_key = st.secrets["OPENROUTER_API_KEY"]  # Changed from DEEPSEEK_API_KEY
-        except Exception:
+        # Prefer Streamlit secrets, fall back to environment variables.
+        openrouter_key = st.secrets.get("OPENROUTER_API_KEY") if hasattr(st, "secrets") else None
+        if not openrouter_key:
             openrouter_key = os.environ.get("OPENROUTER_API_KEY")
 
-        try:
-            github_token = st.secrets["GITHUB_TOKEN"]
-        except Exception:
+        github_token = st.secrets.get("GITHUB_TOKEN") if hasattr(st, "secrets") else None
+        if not github_token:
             github_token = os.environ.get("GITHUB_TOKEN")
 
-        try:
-            gist_id = st.secrets["GITHUB_GIST_ID"]
-        except Exception:
+        gist_id = st.secrets.get("GITHUB_GIST_ID") if hasattr(st, "secrets") else None
+        if not gist_id:
             gist_id = os.environ.get("GITHUB_GIST_ID")
 
         # Basic validation to ensure keys were configured
@@ -242,6 +240,20 @@ def main():
 
         if missing:
             st.error(f"Missing secrets: {', '.join(missing)}. Configure via Streamlit secrets or environment variables.")
+
+            # Show non-sensitive presence checks to help debugging
+            with st.expander("Debug: Secret presence (no values shown)"):
+                def _presence(key: str):
+                    in_secrets = bool(getattr(st, "secrets", {}).get(key))
+                    in_env = bool(os.environ.get(key))
+                    st.write(f"- `{key}` — in Streamlit secrets: {'✅' if in_secrets else '❌'}, in environment: {'✅' if in_env else '❌'}")
+
+                _presence("OPENROUTER_API_KEY")
+                _presence("GITHUB_TOKEN")
+                _presence("GITHUB_GIST_ID")
+
+                st.write("Tip: After updating Streamlit secrets, rebuild/restart the app to apply changes.")
+
             st.stop()
 
         # Initialize components (store instances in session state)
