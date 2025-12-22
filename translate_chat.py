@@ -218,22 +218,21 @@ def main():
         print("Streamlit is not available. `main()` requires Streamlit.")
         return
 
-    # Resolve secrets from Streamlit config or environment variables.
-    # Use item access on `st.secrets` first (works on Streamlit Cloud),
-    # then fall back to environment variables.
     try:
-        # Prefer Streamlit secrets, fall back to environment variables.
-        openrouter_key = st.secrets.get("OPENROUTER_API_KEY") if hasattr(st, "secrets") else None
-        if not openrouter_key:
-            openrouter_key = os.environ.get("OPENROUTER_API_KEY")
+        # Resolve secrets from Streamlit config or environment variables.
+        # Use a safe accessor for `st.secrets` because Streamlit raises when no secrets file exists.
+        def _safe_secret_get(key: str) -> Optional[str]:
+            try:
+                if hasattr(st, "secrets"):
+                    return st.secrets.get(key)
+            except Exception:
+                # Streamlit may raise StreamlitSecretNotFoundError if no secrets file or dir is present.
+                return None
+            return None
 
-        github_token = st.secrets.get("GITHUB_TOKEN") if hasattr(st, "secrets") else None
-        if not github_token:
-            github_token = os.environ.get("GITHUB_TOKEN")
-
-        gist_id = st.secrets.get("GITHUB_GIST_ID") if hasattr(st, "secrets") else None
-        if not gist_id:
-            gist_id = os.environ.get("GITHUB_GIST_ID")
+        openrouter_key = _safe_secret_get("OPENROUTER_API_KEY") or os.environ.get("OPENROUTER_API_KEY")
+        github_token = _safe_secret_get("GITHUB_TOKEN") or os.environ.get("GITHUB_TOKEN")
+        gist_id = _safe_secret_get("GITHUB_GIST_ID") or os.environ.get("GITHUB_GIST_ID")
 
         # Basic validation to ensure keys were configured
         missing = [name for name, val in [("OPENROUTER_API_KEY", openrouter_key), ("GITHUB_TOKEN", github_token), ("GITHUB_GIST_ID", gist_id)] if not val]
@@ -244,7 +243,7 @@ def main():
             # Show non-sensitive presence checks to help debugging
             with st.expander("Debug: Secret presence (no values shown)"):
                 def _presence(key: str):
-                    in_secrets = bool(getattr(st, "secrets", {}).get(key))
+                    in_secrets = bool(_safe_secret_get(key))
                     in_env = bool(os.environ.get(key))
                     st.write(f"- `{key}` — in Streamlit secrets: {'✅' if in_secrets else '❌'}, in environment: {'✅' if in_env else '❌'}")
 
@@ -263,7 +262,6 @@ def main():
 
         if 'translator' not in st.session_state:
             st.session_state.translator = OpenRouterTranslator(openrouter_key)  # Changed to OpenRouterTranslator
-
     except Exception as _e:
         st.error("An error occurred during app initialization — check details below.")
         st.exception(_e)
