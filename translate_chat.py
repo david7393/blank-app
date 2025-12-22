@@ -158,6 +158,8 @@ class DeepSeekTranslator:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         }
+        self.last_status: Optional[int] = None
+        self.last_response_text: Optional[str] = None
     
     def translate_to_english(self, text: str) -> str:
         """Translate text to English"""
@@ -187,16 +189,29 @@ class DeepSeekTranslator:
                 json=data,
                 timeout=30
             )
-            
+
+            # Save status/body for debugging
+            self.last_status = response.status_code
+            try:
+                self.last_response_text = response.text
+            except Exception:
+                self.last_response_text = None
+
             if response.status_code != 200:
-                return "Translation error"
-            
-            result = response.json()
-            translated_text = result['choices'][0]['message']['content'].strip()
-            return translated_text
-            
-        except:
-            return "Translation error"
+                body = self.last_response_text or ""
+                snippet = body[:400].replace('\n', ' ')
+                return f"Translation error: HTTP {response.status_code} - {snippet}"
+
+            try:
+                result = response.json()
+                translated_text = result['choices'][0]['message']['content'].strip()
+                return translated_text
+            except Exception as e:
+                # JSON parse / unexpected structure
+                return f"Translation error: invalid response format ({e})"
+
+        except Exception as e:
+            return f"Translation error: {e}"
 
 # ============================================
 # MAIN APPLICATION
@@ -222,7 +237,15 @@ def main():
             deepseek_key = st.secrets["DEEPSEEK_API_KEY"]
         except Exception:
             deepseek_key = os.environ.get("DEEPSEEK_API_KEY")
+
+        try:
+            github_token = st.secrets["GITHUB_TOKEN"]
+        except Exception:
             github_token = os.environ.get("GITHUB_TOKEN")
+
+        try:
+            gist_id = st.secrets["GITHUB_GIST_ID"]
+        except Exception:
             gist_id = os.environ.get("GITHUB_GIST_ID")
 
         # Basic validation to ensure keys were configured
@@ -301,6 +324,13 @@ def main():
                 with col2:
                     st.write("**Myanmar:**")
                     st.write(myanmar_text)
+                # If there was an error, show debug info from the translator
+                if isinstance(st.session_state.translator, DeepSeekTranslator):
+                    if (isinstance(english_text, str) and english_text.startswith("Translation error")) or (
+                        isinstance(myanmar_text, str) and myanmar_text.startswith("Translation error")):
+                        with st.expander("Debug: DeepSeek HTTP response (no secrets)"):
+                            st.write(f"HTTP status: {st.session_state.translator.last_status}")
+                            st.text(st.session_state.translator.last_response_text or "<no response body>")
         else:
             st.info("Enter some text first")
 
