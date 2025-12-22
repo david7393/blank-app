@@ -1,14 +1,14 @@
+import streamlit as st
 import requests
 import os
 import json
 from datetime import datetime
 from typing import Dict, List, Optional
+from openai import OpenAI  # Add OpenAI client
 
 # NOTE: Do not import `streamlit` or access `st.secrets` at module import time.
 # This file is now import-safe: Streamlit is imported inside `main()`.
 
-import json
-import json
 # ============================================
 # CONFIGURATION - MODIFY THESE VALUES!
 # NOTE: Secrets are resolved at runtime inside `main()` so this module
@@ -16,7 +16,7 @@ import json
 # ============================================
 
 # Values will be populated at runtime; keep safe defaults here.
-DEEPSEEK_API_KEY: Optional[str] = None
+OPENROUTER_API_KEY: Optional[str] = None  # Changed from DEEPSEEK_API_KEY
 GITHUB_TOKEN: Optional[str] = None
 GITHUB_GIST_ID: Optional[str] = None
 
@@ -145,73 +145,66 @@ class GitHubGistStorage:
             return False
 
 # ============================================
-# DEEPSEEK TRANSLATOR
+# OPENROUTER TRANSLATOR (REPLACES DEEPSEEK TRANSLATOR)
 # ============================================
 
-class DeepSeekTranslator:
-    """DeepSeek API translator"""
+class OpenRouterTranslator:
+    """OpenRouter API translator using OpenAI client"""
     
     def __init__(self, api_key: str):
         self.api_key = api_key
-        self.endpoint = "https://api.deepseek.com/v1/chat/completions"
-        self.headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
-        self.last_status: Optional[int] = None
-        self.last_response_text: Optional[str] = None
-    
+        self.client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=api_key
+        )
+        self.last_error: Optional[str] = None
+        
     def translate_to_english(self, text: str) -> str:
         """Translate text to English"""
-        return self._call_api(text, "Translate this to English:")
+        return self._call_api(text, "en")
     
     def translate_to_myanmar(self, text: str) -> str:
         """Translate text to Myanmar (Burmese)"""
-        return self._call_api(text, "Translate this to Myanmar (Burmese) language:")
+        return self._call_api(text, "my")
     
-    def _call_api(self, text: str, instruction: str) -> str:
-        """Call DeepSeek API"""
+    def _call_api(self, text: str, target_lang: str) -> str:
+        """Call OpenRouter API"""
         try:
+            # Prepare translation prompt based on target language
+            if target_lang == "en":
+                instruction = "Translate this to English:"
+            else:  # my
+                instruction = "Translate this to Myanmar (Burmese) language:"
+            
             prompt = f"{instruction}\n\n{text}\n\nOnly provide the translation, no explanations."
             
-            data = {
-                "model": "deepseek-chat",
-                "messages": [
+            response = self.client.chat.completions.create(
+                extra_headers={
+                    "HTTP-Referer": "http://localhost:8501",
+                    "X-Title": "Translation Chat App"
+                },
+                model="deepseek/deepseek-r1-0528:free",
+                messages=[
                     {"role": "user", "content": prompt}
                 ],
-                "max_tokens": 1000,
-                "temperature": 0.3
-            }
-            
-            response = requests.post(
-                self.endpoint,
-                headers=self.headers,
-                json=data,
-                timeout=30
+                max_tokens=1000,
+                temperature=0.3
             )
-
-            # Save status/body for debugging
-            self.last_status = response.status_code
-            try:
-                self.last_response_text = response.text
-            except Exception:
-                self.last_response_text = None
-
-            if response.status_code != 200:
-                body = self.last_response_text or ""
-                snippet = body[:400].replace('\n', ' ')
-                return f"Translation error: HTTP {response.status_code} - {snippet}"
-
-            try:
-                result = response.json()
-                translated_text = result['choices'][0]['message']['content'].strip()
-                return translated_text
-            except Exception as e:
-                # JSON parse / unexpected structure
-                return f"Translation error: invalid response format ({e})"
-
+            
+            translated_text = response.choices[0].message.content.strip()
+            return translated_text
+            
         except Exception as e:
-            return f"Translation error: {e}"
+            self.last_error = str(e)
+            # Return a more user-friendly error message
+            if "401" in str(e):
+                return "Translation error: Invalid API key"
+            elif "402" in str(e):
+                return "Translation error: Insufficient credits"
+            elif "429" in str(e):
+                return "Translation error: Rate limit exceeded"
+            else:
+                return f"Translation error: {str(e)[:100]}"
 
 # ============================================
 # MAIN APPLICATION
@@ -225,18 +218,14 @@ def main():
         print("Streamlit is not available. `main()` requires Streamlit.")
         return
 
-    # Simple interface
-    st.title("Translate Chat")
-    st.write("Authorized access — multilingual translation with chat history.")
-
     # Resolve secrets from Streamlit config or environment variables.
     # Use item access on `st.secrets` first (works on Streamlit Cloud),
     # then fall back to environment variables.
     try:
         try:
-            deepseek_key = st.secrets["DEEPSEEK_API_KEY"]
+            openrouter_key = st.secrets["OPENROUTER_API_KEY"]  # Changed from DEEPSEEK_API_KEY
         except Exception:
-            deepseek_key = os.environ.get("DEEPSEEK_API_KEY")
+            openrouter_key = os.environ.get("OPENROUTER_API_KEY")
 
         try:
             github_token = st.secrets["GITHUB_TOKEN"]
@@ -249,22 +238,10 @@ def main():
             gist_id = os.environ.get("GITHUB_GIST_ID")
 
         # Basic validation to ensure keys were configured
-        # Show a minimal, non-sensitive debug banner indicating presence of secrets
-        secrets_status = {
-            "DEEPSEEK_API_KEY": bool(deepseek_key),
-            "GITHUB_TOKEN": bool(github_token),
-            "GITHUB_GIST_ID": bool(gist_id),
-        }
-
-        st.write("**Secrets status (presence only):**")
-        cols = st.columns(len(secrets_status))
-        for col, (name, present) in zip(cols, secrets_status.items()):
-            col.write(f"{ '✅' if present else '❌' } {name}")
-
-        missing = [name for name, val in secrets_status.items() if not val]
+        missing = [name for name, val in [("OPENROUTER_API_KEY", openrouter_key), ("GITHUB_TOKEN", github_token), ("GITHUB_GIST_ID", gist_id)] if not val]
 
         if missing:
-            st.warning(f"⚠️ Missing secrets: {', '.join(missing)}. Configure via Streamlit secrets or environment variables.")
+            st.error(f"Missing secrets: {', '.join(missing)}. Configure via Streamlit secrets or environment variables.")
             st.stop()
 
         # Initialize components (store instances in session state)
@@ -273,28 +250,52 @@ def main():
             st.session_state.chat_history = st.session_state.storage.load()
 
         if 'translator' not in st.session_state:
-            st.session_state.translator = DeepSeekTranslator(deepseek_key)
-
-        # Indicate app initialized (non-sensitive)
-        st.write("App initialized — ready")
+            st.session_state.translator = OpenRouterTranslator(openrouter_key)  # Changed to OpenRouterTranslator
 
     except Exception as _e:
         st.error("An error occurred during app initialization — check details below.")
         st.exception(_e)
         return
-
-    # Initialize components (store instances in session state)
-    if 'storage' not in st.session_state:
-        st.session_state.storage = GitHubGistStorage(gist_id, github_token)
-        st.session_state.chat_history = st.session_state.storage.load()
-
-    if 'translator' not in st.session_state:
-        st.session_state.translator = DeepSeekTranslator(deepseek_key)
-
+    
+    # User selection
+    if 'current_user' not in st.session_state:
+        st.session_state.current_user = "Unknown"
+    
+    st.write("##### Chat Room")
+    st.divider()
+    
+    # Chat history display
+    if st.session_state.chat_history:
+        # Show last 100 items
+        for entry in st.session_state.chat_history[-100:]:
+            sender = entry.get('sender', 'Unknown')
+            is_current_user = sender == st.session_state.current_user
+            
+            # Determine alignment
+            if is_current_user:
+                # Left aligned for current user
+                col1, col2 = st.columns([0.3, 0.7])
+                with col1:
+                    st.markdown(f"<small style='color: gray;'>{sender} • {entry['timestamp']}</small>", unsafe_allow_html=True)
+                    st.markdown(f"<small>{entry['english']}</small>", unsafe_allow_html=True)
+                    st.markdown(f"<small>{entry['myanmar']}</small>", unsafe_allow_html=True)
+            else:
+                # Right aligned for others
+                col1, col2 = st.columns([0.7, 0.3])
+                with col2:
+                    st.markdown(f"<small style='color: gray; text-align: right;'>{sender} • {entry['timestamp']}</small>", unsafe_allow_html=True)
+                    st.markdown(f"<small style='text-align: right;'>{entry['english']}</small>", unsafe_allow_html=True)
+                    st.markdown(f"<small style='text-align: right;'>{entry['myanmar']}</small>", unsafe_allow_html=True)
+            
+            st.write("")  # Minimal spacing
+    else:
+        st.write("No chat history yet. Start translating!")
+    
+    st.divider()
     # Main input area
-    txt = st.text_area("Enter text to translate")
+    txt = st.text_area(f"{st.session_state.current_user}: Enter text to send")
 
-    if st.button("Translate"):
+    if st.button("Send"):
         if txt:
             with st.spinner("Translating..."):
                 # Get translations
@@ -304,6 +305,7 @@ def main():
                 # Create chat history entry
                 new_entry = {
                     "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "sender": st.session_state.current_user,
                     "original": txt,
                     "english": english_text,
                     "myanmar": myanmar_text
@@ -313,40 +315,16 @@ def main():
                 st.session_state.chat_history.append(new_entry)
                 st.session_state.storage.save(st.session_state.chat_history)
 
-                # Display results
-                st.success("Translated result:")
-
-                # Show both translations
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.write("**English:**")
-                    st.write(english_text)
-                with col2:
-                    st.write("**Myanmar:**")
-                    st.write(myanmar_text)
-                # If there was an error, show debug info from the translator
-                if isinstance(st.session_state.translator, DeepSeekTranslator):
+                    
+                # If there was an error, show debug info
+                if isinstance(st.session_state.translator, OpenRouterTranslator):
                     if (isinstance(english_text, str) and english_text.startswith("Translation error")) or (
                         isinstance(myanmar_text, str) and myanmar_text.startswith("Translation error")):
-                        with st.expander("Debug: DeepSeek HTTP response (no secrets)"):
-                            st.write(f"HTTP status: {st.session_state.translator.last_status}")
-                            st.text(st.session_state.translator.last_response_text or "<no response body>")
+                        with st.expander("Debug: Error Details"):
+                            if st.session_state.translator.last_error:
+                                st.write(f"Error: {st.session_state.translator.last_error}")
         else:
             st.info("Enter some text first")
-
-    # Chat history display
-    st.divider()
-    st.write("### Chat History")
-
-    if st.session_state.chat_history:
-        # Show last 100 items
-        for entry in reversed(st.session_state.chat_history[-100:]):
-            with st.expander(f"{entry['timestamp']} - {entry['original'][:50]}..."):
-                st.write(f"**Original:** {entry['original']}")
-                st.write(f"**English:** {entry['english']}")
-                st.write(f"**Myanmar:** {entry['myanmar']}")
-    else:
-        st.write("No chat history yet. Start translating!")
 
 # ============================================
 # RUN APPLICATION
