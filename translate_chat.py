@@ -308,31 +308,31 @@ def main():
         st.write("No chat history yet. Start translating!")
     
     # Show current response if it exists in session state
-    # if 'current_response' in st.session_state:
-    #     current_entry = st.session_state.current_response
-    #     sender = current_entry.get('sender', 'Unknown')
-    #     is_current_user = sender == st.session_state.current_user
+    if 'current_response' in st.session_state:
+        current_entry = st.session_state.current_response
+        sender = current_entry.get('sender', 'Unknown')
+        is_current_user = sender == st.session_state.current_user
         
-    #     st.markdown("---")
-    #     st.markdown("### Current Response")
+        # st.markdown("---")
+        st.markdown("##### Current Response")
         
-    #     # Determine alignment - same format as chat history
-    #     if is_current_user:
-    #         # Left aligned for current user
-    #         col1, col2 = st.columns([0.3, 0.7])
-    #         with col1:
-    #             st.markdown(f"<small style='color: gray;'>{sender} • {current_entry['timestamp']}</small>", unsafe_allow_html=True)
-    #             st.markdown(f"<small>{current_entry['english']}</small>", unsafe_allow_html=True)
-    #             st.markdown(f"<small>{current_entry['myanmar']}</small>", unsafe_allow_html=True)
-    #     else:
-    #         # Right aligned for others
-    #         col1, col2 = st.columns([0.7, 0.3])
-    #         with col2:
-    #             st.markdown(f"<small style='color: gray; text-align: right;'>{sender} • {current_entry['timestamp']}</small>", unsafe_allow_html=True)
-    #             st.markdown(f"<small style='text-align: right;'>{current_entry['english']}</small>", unsafe_allow_html=True)
-    #             st.markdown(f"<small style='text-align: right;'>{current_entry['myanmar']}</small>", unsafe_allow_html=True)
+        # Determine alignment - same format as chat history
+        if is_current_user:
+            # Left aligned for current user
+            col1, col2 = st.columns([0.3, 0.7])
+            with col1:
+                st.markdown(f"<small style='color: gray;'>{sender} • {current_entry['timestamp']}</small>", unsafe_allow_html=True)
+                st.markdown(f"<small>{current_entry['english']}</small>", unsafe_allow_html=True)
+                st.markdown(f"<small>{current_entry['myanmar']}</small>", unsafe_allow_html=True)
+        else:
+            # Right aligned for others
+            col1, col2 = st.columns([0.7, 0.3])
+            with col2:
+                st.markdown(f"<small style='color: gray; text-align: right;'>{sender} • {current_entry['timestamp']}</small>", unsafe_allow_html=True)
+                st.markdown(f"<small style='text-align: right;'>{current_entry['english']}</small>", unsafe_allow_html=True)
+                st.markdown(f"<small style='text-align: right;'>{current_entry['myanmar']}</small>", unsafe_allow_html=True)
     
-    # st.divider()
+    st.divider()
     # Main input area
     txt = st.text_area(f"{st.session_state.current_user}: Enter text to send")
 
