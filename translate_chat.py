@@ -4,7 +4,7 @@ import os
 import json
 from datetime import datetime
 from typing import Dict, List, Optional
-from openai import OpenAI  # Add OpenAI client
+from llm_helper import get_llm_helper
 
 # NOTE: Do not import `streamlit` or access `st.secrets` at module import time.
 # This file is now import-safe: Streamlit is imported inside `main()`.
@@ -148,64 +148,6 @@ class GitHubGistStorage:
 # OPENROUTER TRANSLATOR (REPLACES DEEPSEEK TRANSLATOR)
 # ============================================
 
-class OpenRouterTranslator:
-    """OpenRouter API translator using OpenAI client"""
-    
-    def __init__(self, api_key: str):
-        self.api_key = api_key
-        self.client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=api_key
-        )
-        self.last_error: Optional[str] = None
-        
-    def translate_to_english(self, text: str) -> str:
-        """Translate text to English"""
-        return self._call_api(text, "en")
-    
-    def translate_to_myanmar(self, text: str) -> str:
-        """Translate text to Myanmar (Burmese)"""
-        return self._call_api(text, "my")
-    
-    def _call_api(self, text: str, target_lang: str) -> str:
-        """Call OpenRouter API"""
-        try:
-            # Prepare translation prompt based on target language
-            if target_lang == "en":
-                instruction = "Translate this to English:"
-            else:  # my
-                instruction = "Translate this to Myanmar (Burmese) language:"
-            
-            prompt = f"{instruction}\n\n{text}\n\nOnly provide the translation, no explanations."
-            
-            response = self.client.chat.completions.create(
-                extra_headers={
-                    "HTTP-Referer": "http://localhost:8501",
-                    "X-Title": "Translation Chat App"
-                },
-                model="deepseek/deepseek-r1-0528:free",
-                messages=[
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=1000,
-                temperature=0.3
-            )
-            
-            translated_text = response.choices[0].message.content.strip()
-            return translated_text
-            
-        except Exception as e:
-            self.last_error = str(e)
-            # Return a more user-friendly error message
-            if "401" in str(e):
-                return "Translation error: Invalid API key"
-            elif "402" in str(e):
-                return "Translation error: Insufficient credits"
-            elif "429" in str(e):
-                return "Translation error: Rate limit exceeded"
-            else:
-                return f"Translation error: {str(e)[:100]}"
-
 # ============================================
 # MAIN APPLICATION
 # ============================================
@@ -266,8 +208,8 @@ def main():
             st.session_state.storage = GitHubGistStorage(gist_id, github_token)
             st.session_state.chat_history = st.session_state.storage.load()
 
-        if 'translator' not in st.session_state:
-            st.session_state.translator = OpenRouterTranslator(openrouter_key)  # Changed to OpenRouterTranslator
+        if 'llm_helper' not in st.session_state:
+            st.session_state.llm_helper = get_llm_helper(openrouter_key)
     except Exception as _e:
         st.error("An error occurred during app initialization — check details below.")
         st.exception(_e)
@@ -340,8 +282,8 @@ def main():
         if txt:
             with st.spinner("Translating..."):
                 # Get translations
-                english_text = st.session_state.translator.translate_to_english(txt)
-                myanmar_text = st.session_state.translator.translate_to_myanmar(txt)
+                english_text = st.session_state.llm_helper.translate_to_english(txt)
+                myanmar_text = st.session_state.llm_helper.translate_to_myanmar(txt)
 
                 # Create chat history entry
                 new_entry = {
@@ -363,12 +305,11 @@ def main():
                 st.rerun()
                     
                 # If there was an error, show debug info
-                if isinstance(st.session_state.translator, OpenRouterTranslator):
-                    if (isinstance(english_text, str) and english_text.startswith("Translation error")) or (
-                        isinstance(myanmar_text, str) and myanmar_text.startswith("Translation error")):
-                        with st.expander("Debug: Error Details"):
-                            if st.session_state.translator.last_error:
-                                st.write(f"Error: {st.session_state.translator.last_error}")
+                if (isinstance(english_text, str) and english_text.startswith("Translation error")) or (
+                    isinstance(myanmar_text, str) and myanmar_text.startswith("Translation error")):
+                    with st.expander("Debug: Error Details"):
+                        if st.session_state.llm_helper.last_error:
+                            st.write(f"Error: {st.session_state.llm_helper.last_error}")
         else:
             st.info("Enter some text first")
 

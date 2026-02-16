@@ -1,10 +1,6 @@
 import streamlit as st
-import random
-import datetime
 import json
 import os
-
-from snake_game import snake_game
 
 HISTORY_FILE = "history.json"
 
@@ -22,40 +18,12 @@ def save_history(history):
     with open(HISTORY_FILE, "w") as f:
         json.dump(history, f, indent=2)
 
-def generate_question():
-    """Generate a Primary 1 question with non-negative result."""
-    q_type = random.choice(["add_sub", "mul"])
-    if q_type == "add_sub":
-        while True:
-            a, b, c = random.randint(1, 60), random.randint(1, 60), random.randint(1, 60)
-            result = a + b - c
-            if result >= 0:
-                break
-        expr = f"{a} + {b} - {c}"
-        answer = result
-    else:
-        a, b = random.randint(2, 9), random.randint(2, 9)
-        expr = f"{a} × {b}"
-        answer = a * b
-    return expr, answer
-
-# ------------------- Session State -------------------
-if "questions" not in st.session_state:
-    st.session_state.questions = [generate_question() for _ in range(10)]
-    st.session_state.answers = [""] * 10
-    st.session_state.completed = False
-    st.session_state.reward_unlocked = False
-
-history = load_history()
-
 # ------------------- Page Selection -------------------
 if "page" not in st.session_state:
     st.session_state.page = "Home"
 
 # Build available pages. Home is the front page with buttons.
-pages = ["Home", "Practice Page", "Lucas", "Translate Chat", "Ella", "Meimei"]
-if st.session_state.get("reward_unlocked", False):
-    pages.append("Reward Game")
+pages = ["Home", "Translate Chat"]
 
 # Preserve the last selected page 
 try:
@@ -74,61 +42,63 @@ if page == "Home":
     # passwords for protected profiles; required value is '1314'
     SECRET_PW = "1314"
 
-    # First row: Ella, Meimei, Lucase
+    # First row: Ella, Meimei, Lucas
     c1, c2, c3 = st.columns(3)
     with c1:
         if st.button("👧 Ella"):
             st.session_state.page = "Ella"
+            st.rerun()
     with c2:
         if st.button("🧒 Meimei"):
             st.session_state.page = "Meimei"
+            st.rerun()
     with c3:
         if st.button("🧑‍🎓 Lucas"):
             st.session_state.page = "Lucas"
+            st.rerun()
 
-    # Second row: David, Mika, Wai Wai
+    # Second row: David, Mika, Wai Wai (all use Translate Chat)
     c4, c5, c6 = st.columns(3)
     with c4:
         if st.button("🕵️ David"):
-            st.session_state.pw_prompt = "David"
+            st.session_state.page = "Translate Chat"
+            st.rerun()
     with c5:
         if st.button("🎧 Mika"):
-            st.session_state.pw_prompt = "Mika"
+            st.session_state.page = "Translate Chat"
+            st.rerun()
     with c6:
         if st.button("🎨 Wai Wai"):
-            st.session_state.pw_prompt = "Wai Wai"
+            st.session_state.page = "Translate Chat"
+            st.rerun()
 
-    # Inline password prompt (replacement for modal)
-    pw_prompt = st.session_state.get("pw_prompt")
-    if pw_prompt:
-        st.markdown(f"**Enter password for {pw_prompt}:**")
-        pw_val = st.text_input("Password", type="password", key="pw_input")
-        if st.button("Submit Password", key="submit_pw"):
-            if pw_val == SECRET_PW:
-                # set the current user to the profile that was selected
-                st.session_state.current_user = pw_prompt
-                st.session_state.page = "Translate Chat"
-                # clear prompt and input
-                st.session_state.pop("pw_prompt", None)
-                st.session_state.pop("pw_input", None)
-            else:
-                st.error("Incorrect password")
+# ------------------- Practice Pages -------------------
 
-    # Stop further rendering when on Home
+# Ella page
+if page == "Ella":
+    try:
+        import primary_math
+        primary_math.show(user="ella")
+    except Exception as e:
+        st.error(f"Failed to load Ella page: {e}")
     st.stop()
 
-# ------------------- Practice Page (placeholder) -------------------
-if page == "Practice Page":
-    st.title("Practice Page")
-    st.write("This is an empty practice page placeholder.")
+# Meimei page
+if page == "Meimei":
+    try:
+        import primary_math
+        primary_math.show(user="meimei")
+    except Exception as e:
+        st.error(f"Failed to load Meimei page: {e}")
     st.stop()
 
-# ------------------- Lucase page (load module) -------------------
+# Lucas page
 if page == "Lucas":
     try:
-        import lucas
-    except Exception:
-        st.error("Failed to load Lucase page")
+        import primary_math
+        primary_math.show(user="lucas")
+    except Exception as e:
+        st.error(f"Failed to load Lucas page: {e}")
     st.stop()
 
 # ------------------- Translate Chat page (load module) -------------------
@@ -139,18 +109,8 @@ if page == "Translate Chat":
         # that must be called to render the page (it does not render on import).
         translate_chat.main()
     except Exception as e:
-        st.error("Failed to load Translate Chat page")
+        st.error(f"Failed to load Translate Chat page: {e}")
         st.exception(e)
-    st.stop()
-
-# ------------------- Ella / Meimei pages (load module) -------------------
-if page == "Ella" or page == "Meimei":
-    try:
-        import ella_math
-        # call the page's renderer function
-        ella_math.show()
-    except Exception:
-        st.error("Failed to load Ella/Meimei page")
     st.stop()
 
 
