@@ -6,8 +6,11 @@ Users can select difficulty level and practice 10 questions.
 
 import streamlit as st
 import os
+import json
+from datetime import datetime
 from llm_helper import get_llm_helper
 from snake_game import snake_game
+
 LEVELS = ["P1", "P2", "P3", "P4", "P5", "P6", "PLSE"]
 LEVEL_DESCRIPTIONS = {
     "P1": "Primary 1 (Ages 6-7) - Addition, Subtraction, Simple Multiplication",
@@ -18,6 +21,8 @@ LEVEL_DESCRIPTIONS = {
     "P6": "Primary 6 (Ages 11-12) - Advanced Algebra, Geometry, Statistics",
     "PLSE": "Pre-Lower Secondary Exam - Comprehensive Exam Preparation",
 }
+
+HISTORY_FILE = "history.json"
 
 
 # ------------------- Helpers -------------------
@@ -38,6 +43,65 @@ def get_llm_helper_instance():
     return st.session_state.llm_helper
 
 
+def load_user_history(user: str):
+    """Load history for a specific user."""
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, "r") as f:
+                all_history = json.load(f)
+                # Convert old format to new format if needed
+                if isinstance(all_history, dict) and not any(k.startswith(user) for k in all_history.keys()):
+                    # Old format without user prefix, assume it's for current user
+                    return {k: v for k, v in all_history.items() if len(v) > 0} if all_history else {}
+                # New format with user prefix
+                return {k: v for k, v in all_history.items() if k.startswith(f"{user}_")} if all_history else {}
+        except (json.JSONDecodeError, ValueError):
+            return {}
+    return {}
+
+
+def save_practice_result(user: str, level: str, results: list, score: int):
+    """Save practice results to history."""
+    try:
+        with open(HISTORY_FILE, "r") as f:
+            all_history = json.load(f)
+    except:
+        all_history = {}
+    
+    # Create key with user and date
+    today = datetime.now().strftime("%Y-%m-%d")
+    key = f"{user}_{level}_{today}"
+    
+    all_history[key] = {
+        "user": user,
+        "level": level,
+        "score": score,
+        "total": len(results),
+        "timestamp": datetime.now().isoformat(),
+        "results": results
+    }
+    
+    with open(HISTORY_FILE, "w") as f:
+        json.dump(all_history, f, indent=2)
+
+
+def get_calendar_stats(user: str) -> dict:
+    """Get practice stats for calendar display."""
+    history = load_user_history(user)
+    stats = {}
+    
+    for key, value in history.items():
+        if isinstance(value, dict) and "timestamp" in value:
+            date = value.get("timestamp", "").split("T")[0]
+            if date not in stats:
+                stats[date] = {"count": 0, "total_score": 0, "total_questions": 0}
+            stats[date]["count"] += 1
+            stats[date]["total_score"] += value.get("score", 0)
+            stats[date]["total_questions"] += value.get("total", 10)
+    
+    return stats
+
+
 
 
 
@@ -50,7 +114,7 @@ def show(user: str = "ella"):
     """
     # ------------------- Session State -------------------
     if "primary_math_level" not in st.session_state:
-        st.session_state.primary_math_level = "P2"
+        st.session_state.primary_math_level = None  # No default, user must select
     if "primary_math_questions" not in st.session_state:
         st.session_state.primary_math_questions = []
     if "primary_math_answers" not in st.session_state:
@@ -59,19 +123,52 @@ def show(user: str = "ella"):
         st.session_state.primary_math_completed = False
     if "primary_math_reward_unlocked" not in st.session_state:
         st.session_state.primary_math_reward_unlocked = False
+    if "primary_math_current_user" not in st.session_state:
+        st.session_state.primary_math_current_user = user
 
     user_upper = user.upper()
 
     # ------------------- Sidebar Navigation -------------------
     st.sidebar.header(f"👤 {user_upper}'s Math Practice")
 
+    # User switching buttons
+    st.sidebar.subheader("Switch User")
+    col1, col2, col3 = st.sidebar.columns(3)
+    with col1:
+        if st.button("👧 Ella", key="btn_ella"):
+            st.session_state.primary_math_current_user = "ella"
+            st.session_state.page = "Ella"
+            st.rerun()
+    with col2:
+        if st.button("🧒 Meimei", key="btn_meimei"):
+            st.session_state.primary_math_current_user = "meimei"
+            st.session_state.page = "Meimei"
+            st.rerun()
+    with col3:
+        if st.button("🧑‍🎓 Lucas", key="btn_lucas"):
+            st.session_state.primary_math_current_user = "lucas"
+            st.session_state.page = "Lucas"
+            st.rerun()
+
+    st.sidebar.markdown("---")
+
     # Level selection
-    selected_level = st.sidebar.selectbox(
-        "📚 Select Level:",
-        LEVELS,
-        index=LEVELS.index(st.session_state.primary_math_level),
-        format_func=lambda x: LEVEL_DESCRIPTIONS.get(x, x)
-    )
+    if st.session_state.primary_math_level is None:
+        st.sidebar.info("📚 Please select a level to start practice")
+        selected_level = st.sidebar.selectbox(
+            "📚 Select Level:",
+            LEVELS,
+            format_func=lambda x: LEVEL_DESCRIPTIONS.get(x, x),
+            key="level_select"
+        )
+    else:
+        selected_level = st.sidebar.selectbox(
+            "📚 Select Level:",
+            LEVELS,
+            index=LEVELS.index(st.session_state.primary_math_level),
+            format_func=lambda x: LEVEL_DESCRIPTIONS.get(x, x),
+            key="level_select"
+        )
 
     if selected_level != st.session_state.primary_math_level:
         st.session_state.primary_math_level = selected_level
@@ -80,9 +177,24 @@ def show(user: str = "ella"):
         st.session_state.primary_math_completed = False
         st.rerun()
 
-
+    # Calendar/History section
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("📅 Practice History")
+    calendar_stats = get_calendar_stats(user)
+    if calendar_stats:
+        for date in sorted(calendar_stats.keys(), reverse=True)[:7]:  # Last 7 days
+            stats = calendar_stats[date]
+            score_pct = (stats["total_score"] / stats["total_questions"] * 100) if stats["total_questions"] > 0 else 0
+            st.sidebar.write(f"**{date}**: {stats['total_score']}/{stats['total_questions']} ✓ ({score_pct:.0f}%)")
+    else:
+        st.sidebar.write("No practice history yet")
 
     # ------------------- Main Content -------------------
+    if st.session_state.primary_math_level is None:
+        st.title(f"🧮 {user_upper}'s Math Practice")
+        st.info("👈 Please select a difficulty level from the sidebar to begin!")
+        return
+
     st.title(f"🧮 {user_upper}'s {st.session_state.primary_math_level} Math Practice")
     st.caption(LEVEL_DESCRIPTIONS.get(st.session_state.primary_math_level, ""))
 
@@ -102,15 +214,25 @@ def show(user: str = "ella"):
                 st.error("LLM Helper not available")
                 return
 
-    # Display questions
-    st.subheader("Solve these 10 questions:")
+    # Display questions with better layout
+    st.subheader("📝 Solve these 10 questions:")
+    st.write("Enter your answers below:")
+    
     for i, (q, correct_ans) in enumerate(st.session_state.primary_math_questions):
         if not st.session_state.primary_math_completed:
-            st.session_state.primary_math_answers[i] = st.text_input(
-                f"Q{i+1}: {q}",
-                value=st.session_state.primary_math_answers[i],
-                key=f"ans_{i}"
-            )
+            # Better layout for questions
+            col_num, col_input = st.columns([1, 5])
+            with col_num:
+                st.write(f"**Q{i+1}**")
+            with col_input:
+                st.session_state.primary_math_answers[i] = st.text_input(
+                    q,
+                    value=st.session_state.primary_math_answers[i],
+                    key=f"ans_{i}",
+                    label_visibility="collapsed"
+                )
+        else:
+            st.write(f"**Q{i+1}**: {q}")
 
     # Submit button
     if st.button("✅ Submit answers", disabled=st.session_state.primary_math_completed):
@@ -128,7 +250,7 @@ def show(user: str = "ella"):
             
             is_correct = (ua == correct)
             symbol = "✅" if is_correct else f"❌ (Correct: {correct})"
-            st.write(f"Q{i+1}: {q} → {ua} {symbol}")
+            st.write(f"**Q{i+1}**: {q} → {ua} {symbol}")
             
             if is_correct:
                 score += 1
@@ -137,6 +259,9 @@ def show(user: str = "ella"):
 
         st.success(f"🎉 You got {score}/10 correct!")
         st.session_state.primary_math_completed = True
+        
+        # Save results to history
+        save_practice_result(user, st.session_state.primary_math_level, results, score)
 
         # Unlock reward if perfect score
         if score == 10:

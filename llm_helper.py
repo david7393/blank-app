@@ -88,70 +88,82 @@ class LLMHelper:
             "P1": {
                 "desc": "Primary 1 (Ages 6-7)",
                 "topics": "addition and subtraction within 20, simple multiplication facts, basic word problems",
-                "examples": "3 + 5, 12 - 4, 2 × 3, simple story problems with objects"
+                "examples": "3 + 5, 12 - 4, 2 × 3, simple story problems with objects",
+                "bonus": "Use simple numbers, friendly characters like animals and kids"
             },
             "P2": {
                 "desc": "Primary 2 (Ages 7-8)",
                 "topics": "addition and subtraction within 100, multiplication and division facts (1-12 times tables), word problems with everyday items",
-                "examples": "25 + 18, 50 - 23, 6 × 7, 30 ÷ 5, 'Tom has 15 apples, buys 8 more, how many total?'"
+                "examples": "25 + 18, 50 - 23, 6 × 7, 30 ÷ 5, 'Tom has 15 apples, buys 8 more, how many total?'",
+                "bonus": "Make scenarios about school, toys, snacks, animals, daily life"
             },
             "P3": {
                 "desc": "Primary 3 (Ages 8-9)",
-                "topics": "operations within 1000, multiplication/division (up to 12×12), fractions, word problems, logic problems",
-                "examples": "234 + 156, 500 - 278, 9 × 8, 48 ÷ 6, 1/2 + 1/4, 'Rabbits and chickens have 10 heads and 28 legs, how many of each?'"
+                "topics": "operations within 1000, multiplication/division (up to 12×12), fractions, word problems, logic/puzzle problems",
+                "examples": "234 + 156, 500 - 278, 9 × 8, 48 ÷ 6, 1/2 + 1/4, 'Rabbits and chickens have 10 heads and 28 legs, how many of each?'",
+                "bonus": "Include logic puzzles and multi-step decisions"
             },
             "P4": {
                 "desc": "Primary 4 (Ages 9-10)",
                 "topics": "multi-digit operations, fractions and decimals, geometry (area/perimeter), word problems, mixed operations",
-                "examples": "1234 + 567, 2000 - 845, 12 × 15, 144 ÷ 12, 0.5 + 0.25, 'Rectangle 12cm × 8cm, find area', 'If apples cost $3 each and I buy 5, total cost?'"
+                "examples": "1234 + 567, 2000 - 845, 12 × 15, 144 ÷ 12, 0.5 + 0.25, 'Rectangle 12cm × 8cm, find area', 'If apples cost $3 each and I buy 5, total cost?'",
+                "bonus": "Include money problems, shopping, measurements, real-world scenarios"
             },
             "P5": {
                 "desc": "Primary 5 (Ages 10-11)",
                 "topics": "fractions/decimals/percentages, ratios, basic algebra, geometry, word problems with multiple steps, consumer math",
-                "examples": "3/4 × 2/3, 15% of 80, ratio 2:3, solve x + 5 = 12, 'Discount of 20% on $50, final price?', 'Speed and distance problems'"
+                "examples": "3/4 × 2/3, 15% of 80, ratio 2:3, solve x + 5 = 12, 'Discount of 20% on $50, final price?', 'Speed and distance problems'",
+                "bonus": "Include discounts, taxes, speed-distance-time, proportion problems"
             },
             "P6": {
                 "desc": "Primary 6 (Ages 11-12)",
                 "topics": "advanced algebra, percentages/ratios/proportions, geometry (area, volume, perimeter), statistics, multi-step problems, profit/loss",
-                "examples": "120% of 50, solve 2x + 3 = 11, 'If cost is $80 and profit margin is 25%, selling price?', 'Ratio 2:5, if total is 70, find first part'"
+                "examples": "120% of 50, solve 2x + 3 = 11, 'If cost is $80 and profit margin is 25%, selling price?', 'Ratio 2:5, if total is 70, find first part'",
+                "bonus": "Include complex scenarios with profit/loss, compound ratios, advanced geometry"
             },
             "PLSE": {
                 "desc": "Pre-Lower Secondary Exam (Ages 11-13)",
                 "topics": "comprehensive: algebra equations, geometry proofs, statistics, number theory, problem-solving, real-world applications",
-                "examples": "Solve quadratic equations, find area and volume, 'A train travels at 60km/h for 2.5 hours, distance?', 'Profit and loss calculations', 'Probability problems'"
+                "examples": "Solve quadratic equations, find area and volume, 'A train travels at 60km/h for 2.5 hours, distance?', 'Profit and loss calculations', 'Probability problems'",
+                "bonus": "Include challenging multi-step problems, algebra, geometry proofs, statistics"
             }
         }
         
         spec = level_specs.get(level, level_specs["P1"])
         
-        prompt = f"""Generate {count} math questions suitable for {spec['desc']}.
+        prompt = f"""Generate {count} DIVERSE and ENGAGING math questions suitable for {spec['desc']}.
 
 Topics to cover: {spec['topics']}
 Example question types: {spec['examples']}
+Special focus: {spec['bonus']}
 
-IMPORTANT: Include a VARIETY of question types:
-- Pure calculations (arithmetic, algebra)
-- Word problems with real-world scenarios (money, shopping, travel, objects)
-- Logic problems (like the classic rabbit-chicken problem with multiple unknowns)
-- Geometry problems (length, area, perimeter, volume)
-- Ratio and proportion problems
-- Percentage and discount problems
+IMPORTANT: Create a BALANCED MIX of question types:
+1. Pure calculations (mental math, operations) - about 3-4 questions
+2. REAL WORLD WORD PROBLEMS - about 4-5 questions (with context, names, items, money)
+3. LOGIC/PUZZLE PROBLEMS - about 1-2 questions (multi-step thinking)
+4. GEOMETRY/MEASUREMENTS - about 1-2 questions (where applicable for this level)
 
-Format each question exactly as follows:
-Q: [question text - can be a word problem or calculation]
-A: [answer as a single number or result]
+Format each question EXACTLY as follows (IMPORTANT):
+Q: [question text here]
+A: [numeric answer only]
 
-Rules:
-1. Each question must be on its own line with Q: prefix
-2. Answer must immediately follow with A: prefix
-3. Answers must be numbers only (no units or extra text)
-4. Questions should be varied in type (don't just do calculations)
-5. Make mini word problems that are age-appropriate and interesting
-6. For word problems: include context like names, objects, money, quantities
-7. Avoid extremely trivial questions
-8. Include at least 3-4 word problems or logic problems in the {count} questions
+CRITICAL RULES:
+1. EVERY line with Q: must be followed by a line with A:
+2. Q: and A: must be ON SEPARATE LINES
+3. Answer must be a NUMBER ONLY (no units, no text, no "=" sign)
+4. For word problems, make them SHORT but CLEAR with character names and scenarios
+5. Answers must be exact: integers for whole numbers, decimals where needed (e.g., 3.5 not 3.5 cm)
+6. All {count} questions should be DIFFERENT and INTERESTING
+7. Mix difficulty within the level - some easier, some harder
 
-Generate {count} diverse questions now:"""
+Format example:
+Q: If Sarah has 15 apples and gives 3 to her friend, how many does she have left?
+A: 12
+
+Q: 25 + 17 = ?
+A: 42
+
+Now generate {count} diverse, interesting, and well-formatted questions:"""
         
         return prompt
     
