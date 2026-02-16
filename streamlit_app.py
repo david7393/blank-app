@@ -23,7 +23,7 @@ if "page" not in st.session_state:
     st.session_state.page = "Home"
 
 # Build available pages. Home is the front page with buttons.
-pages = ["Home", "Translate Chat"]
+pages = ["Home", "Ella", "Meimei", "Lucas", "Translate Chat"]
 
 # Preserve the last selected page 
 current_page = st.session_state.get("page", "Home")
@@ -31,14 +31,13 @@ try:
     default_index = pages.index(current_page)
     is_valid_page = True
 except ValueError:
-    # Current page not in radio options (e.g., "Ella", "Meimei", "Lucas")
+    # Current page not in radio options
     default_index = 0
     is_valid_page = False
 
 selected = st.sidebar.radio("📚 Pages", pages, index=default_index)
 
 # Only update page from radio if we were on a valid page
-# This preserves custom pages like "Ella", "Meimei", "Lucas"
 if is_valid_page:
     st.session_state.page = selected
 

@@ -131,27 +131,6 @@ def show(user: str = "ella"):
     # ------------------- Sidebar Navigation -------------------
     st.sidebar.header(f"👤 {user_upper}'s Math Practice")
 
-    # User switching buttons
-    st.sidebar.subheader("Switch User")
-    col1, col2, col3 = st.sidebar.columns(3)
-    with col1:
-        if st.button("👧 Ella", key="btn_ella"):
-            st.session_state.primary_math_current_user = "ella"
-            st.session_state.page = "Ella"
-            st.rerun()
-    with col2:
-        if st.button("🧒 Meimei", key="btn_meimei"):
-            st.session_state.primary_math_current_user = "meimei"
-            st.session_state.page = "Meimei"
-            st.rerun()
-    with col3:
-        if st.button("🧑‍🎓 Lucas", key="btn_lucas"):
-            st.session_state.primary_math_current_user = "lucas"
-            st.session_state.page = "Lucas"
-            st.rerun()
-
-    st.sidebar.markdown("---")
-
     # Level selection
     if st.session_state.primary_math_level is None:
         st.sidebar.info("📚 Please select a level to start practice")
@@ -220,19 +199,17 @@ def show(user: str = "ella"):
     
     for i, (q, correct_ans) in enumerate(st.session_state.primary_math_questions):
         if not st.session_state.primary_math_completed:
-            # Better layout for questions
-            col_num, col_input = st.columns([1, 5])
-            with col_num:
-                st.write(f"**Q{i+1}**")
-            with col_input:
-                st.session_state.primary_math_answers[i] = st.text_input(
-                    q,
-                    value=st.session_state.primary_math_answers[i],
-                    key=f"ans_{i}",
-                    label_visibility="collapsed"
-                )
+            # Better layout for questions with larger text
+            st.write(f"### Q{i+1}: {q}")
+            st.session_state.primary_math_answers[i] = st.text_input(
+                "Answer:",
+                value=st.session_state.primary_math_answers[i],
+                key=f"ans_{i}",
+                label_visibility="collapsed"
+            )
+            st.write("")  # Add spacing between questions
         else:
-            st.write(f"**Q{i+1}**: {q}")
+            st.write(f"**Q{i+1}: {q}**")
 
     # Submit button
     if st.button("✅ Submit answers", disabled=st.session_state.primary_math_completed):
