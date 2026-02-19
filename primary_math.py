@@ -165,9 +165,6 @@ def show(user: str = "ella"):
         st.session_state.primary_math_completed = False
         st.rerun()
 
-    st.title(f"🧮 {user_upper}'s {st.session_state.primary_math_level} Math Practice")
-    st.caption(LEVEL_DESCRIPTIONS.get(st.session_state.primary_math_level, ""))
-
     # Question style selection and explicit generation button moved to main page
     st.markdown("---")
     st.subheader("🧭 Question Options")

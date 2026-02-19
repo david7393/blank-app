@@ -97,46 +97,50 @@ class LLMHelper:
         """Build the prompt for generating math questions by level."""
         level_specs = {
             "P1": {
-                "desc": "Primary 1 (Ages 6-7)",
+                "desc": "Primary 1 (Ages 6-7), matching Singapore Primary 1 Math syllabus",
                 "topics": "addition and subtraction within 20, simple multiplication facts, basic word problems",
                 "examples": "3 + 5, 12 - 4, 2 × 3, simple story problems with objects",
                 "bonus": "Use simple numbers, friendly characters like animals and kids"
             },
             "P2": {
-                "desc": "Primary 2 (Ages 7-8)",
+                "desc": "Primary 2 (Ages 7-8), matching Singapore Primary 2 Math syllabus",
                 "topics": "addition and subtraction within 100, multiplication and division facts (1-12 times tables), word problems with everyday items",
                 "examples": "25 + 18, 50 - 23, 6 × 7, 30 ÷ 5, 'Tom has 15 apples, buys 8 more, how many total?'",
                 "bonus": "Make scenarios about school, toys, snacks, animals, daily life"
             },
             "P3": {
-                "desc": "Primary 3 (Ages 8-9)",
+                "desc": "Primary 3 (Ages 8-9), matching Singapore Primary 3 Math syllabus",
                 "topics": "operations within 1000, multiplication/division (up to 12×12), fractions, word problems, logic/puzzle problems",
                 "examples": "234 + 156, 500 - 278, 9 × 8, 48 ÷ 6, 1/2 + 1/4, 'Rabbits and chickens have 10 heads and 28 legs, how many of each?'",
                 "bonus": "Include logic puzzles and multi-step decisions"
             },
             "P4": {
-                "desc": "Primary 4 (Ages 9-10)",
+                "desc": "Primary 4 (Ages 9-10), matching Singapore Primary 4 Math syllabus",
                 "topics": "multi-digit operations, fractions and decimals, geometry (area/perimeter), word problems, mixed operations",
                 "examples": "1234 + 567, 2000 - 845, 12 × 15, 144 ÷ 12, 0.5 + 0.25, 'Rectangle 12cm × 8cm, find area', 'If apples cost $3 each and I buy 5, total cost?'",
-                "bonus": "Include money problems, shopping, measurements, real-world scenarios"
+                "bonus": "Include money problems, shopping, measurements, real-world scenarios",
+                "requirment": "More focus on word problems and real-world applications, less on pure calculations compared to earlier levels"
             },
             "P5": {
-                "desc": "Primary 5 (Ages 10-11)",
+                "desc": "Primary 5 (Ages 10-11), matching Singapore Primary 5 Math syllabus",
                 "topics": "fractions/decimals/percentages, ratios, basic algebra, geometry, word problems with multiple steps, consumer math",
                 "examples": "3/4 × 2/3, 15% of 80, ratio 2:3, solve x + 5 = 12, 'Discount of 20% on $50, final price?', 'Speed and distance problems'",
-                "bonus": "Include discounts, taxes, speed-distance-time, proportion problems"
+                "bonus": "Include discounts, taxes, speed-distance-time, proportion problems",
+                "requirment": "More focus on word problems and real-world applications, less on pure calculations compared to earlier levels"
             },
             "P6": {
-                "desc": "Primary 6 (Ages 11-12)",
+                "desc": "Primary 6 (Ages 11-12), matching Singapore Primary 6 Math syllabus",
                 "topics": "advanced algebra, percentages/ratios/proportions, geometry (area, volume, perimeter), statistics, multi-step problems, profit/loss",
                 "examples": "120% of 50, solve 2x + 3 = 11, 'If cost is $80 and profit margin is 25%, selling price?', 'Ratio 2:5, if total is 70, find first part'",
-                "bonus": "Include complex scenarios with profit/loss, compound ratios, advanced geometry"
+                "bonus": "Include complex scenarios with profit/loss, compound ratios, advanced geometry",
+                "requirment": "More focus on word problems and real-world applications, less on pure calculations compared to earlier levels"
             },
             "PLSE": {
-                "desc": "Pre-Lower Secondary Exam (Ages 11-13)",
+                "desc": "Pre-Lower Secondary Exam (Ages 11-13), matching Singapore PLSE syllabus, preparing for secondary school math",
                 "topics": "comprehensive: algebra equations, geometry proofs, statistics, number theory, problem-solving, real-world applications",
                 "examples": "Solve quadratic equations, find area and volume, 'A train travels at 60km/h for 2.5 hours, distance?', 'Profit and loss calculations', 'Probability problems'",
-                "bonus": "Include challenging multi-step problems, algebra, geometry proofs, statistics"
+                "bonus": "Include challenging multi-step problems, algebra, geometry proofs, statistics",
+                "requirment": "More focus on real PSLE questions."
             }
         }
         
