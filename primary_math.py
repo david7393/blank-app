@@ -163,7 +163,7 @@ def show(user: str = "ella"):
         st.session_state.primary_math_questions = []
         st.session_state.primary_math_answers = []
         st.session_state.primary_math_completed = False
-        st.experimental_rerun()
+        st.rerun()
 
     st.title(f"🧮 {user_upper}'s {st.session_state.primary_math_level} Math Practice")
     st.caption(LEVEL_DESCRIPTIONS.get(st.session_state.primary_math_level, ""))
