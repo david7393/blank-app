@@ -4,7 +4,7 @@ import streamlit as st
 def parkour_game():
     """Very simple parkour game embedded as HTML/JS using a canvas.
     Controls: tap/click or press space to jump.
-    This is intentionally minimal and uses plain JS for easy embedding.
+    Features 5-second countdown, improved character graphics, and increasing difficulty.
     """
     html = r"""
     <div style='text-align:center'>
@@ -19,6 +19,8 @@ def parkour_game():
     let speed = 3;
     let tick = 0;
     let alive = true;
+    let gameStarted = false;
+    let countdownTime = 5;
 
     function spawn(){
       const h = 20 + Math.random()*40;
@@ -34,7 +36,6 @@ def parkour_game():
 
     function update(){
       if(!alive) return;
-      tick++;
       if(tick%90===0){ spawn(); }
       if(tick%600===0){ speed += 0.5; }
 
@@ -51,19 +52,53 @@ def parkour_game():
       }
     }
 
+    function drawPlayer(){
+      // Draw a simple character with head and body
+      ctx.fillStyle = '#ff6b6b';
+      // Head
+      ctx.beginPath();
+      ctx.arc(player.x + player.w/2, player.y - player.h + 8, 6, 0, Math.PI*2);
+      ctx.fill();
+      // Body
+      ctx.fillRect(player.x + 6, player.y - player.h + 15, 8, 12);
+      // Eyes
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(player.x + player.w/2 - 2, player.y - player.h + 6, 2, 0, Math.PI*2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(player.x + player.w/2 + 2, player.y - player.h + 6, 2, 0, Math.PI*2);
+      ctx.fill();
+    }
+
     function draw(){
       ctx.clearRect(0,0,canvas.width,canvas.height);
       // ground
       ctx.fillStyle = '#88c070'; ctx.fillRect(0,170,canvas.width,30);
-      // player
-      ctx.fillStyle = '#333'; ctx.fillRect(player.x, player.y-player.h, player.w, player.h);
+      // player with better graphics
+      drawPlayer();
       // obstacles
       ctx.fillStyle = '#b33';
       obstacles.forEach(o=> ctx.fillRect(o.x, o.y, o.w, o.h));
+      // Countdown or game info
+      ctx.fillStyle = '#333'; ctx.font='16px sans-serif';
+      if(!gameStarted){ ctx.fillText('Starting in: '+countdownTime, 10, 30); }
+      else { ctx.fillText('Score: '+Math.floor(tick/10), 10, 30); }
       if(!alive){ ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle='#fff'; ctx.font='20px sans-serif'; ctx.fillText('Game Over - Refresh to Play Again',40,100); }
     }
 
-    function loop(){ update(); draw(); requestAnimationFrame(loop); }
+    function loop(){
+      if(!gameStarted){
+        if(tick % 60 === 0){ countdownTime--; }
+        if(countdownTime <= 0){ gameStarted = true; tick=0; }
+        draw();
+      } else {
+        update();
+        draw();
+      }
+      tick++;
+      requestAnimationFrame(loop);
+    }
     loop();
     </script>
     """

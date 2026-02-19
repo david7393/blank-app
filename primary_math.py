@@ -254,36 +254,26 @@ def show(user: str = "ella"):
         # Unlock reward if perfect score
         if score == 10:
             st.session_state.primary_math_reward_unlocked = True
-            st.success("🎁 Perfect score! Reward games unlocked! Choose a game to play:")
-            
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                if st.button("🐍 Snake Game"):
-                    st.markdown("---")
-                    snake_game()
-            with col2:
-                if st.button("🏃 Parkour"):
-                    st.markdown("---")
-                    parkour_game()
-            with col3:
-                if st.button("🐦 Flappy Bird"):
-                    st.markdown("---")
-                    flappy_game()
+            st.success("🎁 Perfect score! Reward games unlocked!")
 
     # Show reward games if already unlocked
     if st.session_state.primary_math_reward_unlocked and st.session_state.primary_math_completed:
         st.markdown("---")
-        st.subheader("🎮 Play More Games:")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            if st.button("🐍 Play Snake"):
-                snake_game()
-        with col2:
-            if st.button("🏃 Play Parkour"):
-                parkour_game()
-        with col3:
-            if st.button("🐦 Play Flappy"):
-                flappy_game()
+        st.subheader("🎮 Choose a Game:")
+        
+        game_choice = st.radio(
+            "Select a game to play:",
+            ["🐍 Snake Game", "🏃 Parkour", "🐦 Flappy Bird"],
+            horizontal=True
+        )
+        
+        # Display selected game full-width
+        if game_choice == "🐍 Snake Game":
+            snake_game()
+        elif game_choice == "🏃 Parkour":
+            parkour_game()
+        elif game_choice == "🐦 Flappy Bird":
+            flappy_game()
 
 
 if __name__ == "__main__":
