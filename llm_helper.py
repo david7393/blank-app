@@ -39,13 +39,15 @@ class LLMHelper:
     # MATH QUESTION GENERATION
     # ==========================================
     
-    def generate_math_questions(self, level: str, count: int = 10) -> List[Tuple[str, float]]:
+    def generate_math_questions(self, level: str, count: int = 10, style: str = "Balanced (Mixed)", fast: bool = True) -> List[Tuple[str, float]]:
         """
         Generate math questions for a specific primary level.
         
         Args:
             level: One of "P1", "P2", "P3", "P4", "P5", "P6", or "PLSE"
             count: Number of questions to generate (default: 10)
+            style: One of the style descriptors (e.g., "Balanced (Mixed)") to bias question types
+            fast: When True, ask for a shorter/concise response and reduce max tokens for speed
         
         Returns:
             List of tuples (question_string, correct_answer)
@@ -58,8 +60,16 @@ class LLMHelper:
             raise ValueError(f"Invalid level: {level}. Must be one of {valid_levels}")
         
         try:
-            prompt = self._build_math_prompt(level, count)
-            
+            prompt = self._build_math_prompt(level, count, style=style)
+
+            # Tune request for speed when requested
+            if fast:
+                max_tokens = max(300, min(1200, 80 * int(count)))
+                temperature = 0.2
+            else:
+                max_tokens = 2000
+                temperature = 0.7
+
             response = self.client.chat.completions.create(
                 extra_headers={
                     "HTTP-Referer": "http://localhost:8501",
@@ -69,20 +79,20 @@ class LLMHelper:
                 messages=[
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=2000,
-                temperature=0.7
+                max_tokens=max_tokens,
+                temperature=temperature
             )
-            
+
             response_text = response.choices[0].message.content.strip()
             questions = self._parse_math_response(response_text)
-            
+
             return questions
-            
+
         except Exception as e:
             self.last_error = str(e)
             return self._fallback_math_questions(level, count)
     
-    def _build_math_prompt(self, level: str, count: int) -> str:
+    def _build_math_prompt(self, level: str, count: int, style: str = "Balanced (Mixed)") -> str:
         """Build the prompt for generating math questions by level."""
         level_specs = {
             "P1": {
@@ -131,11 +141,16 @@ class LLMHelper:
         
         spec = level_specs.get(level, level_specs["P1"])
         
+        # Incorporate style into the prompt to bias question types.
+        style_line = f"Prefer style: {style}." if style else ""
+
         prompt = f"""Generate {count} DIVERSE and ENGAGING math questions suitable for {spec['desc']}.
 
 Topics to cover: {spec['topics']}
 Example question types: {spec['examples']}
 Special focus: {spec['bonus']}
+
+    {style_line}
 
 IMPORTANT: Create a BALANCED MIX of question types:
 1. Pure calculations (mental math, operations) - about 3-4 questions
@@ -155,6 +170,20 @@ CRITICAL RULES:
 5. Answers must be exact: integers for whole numbers, decimals where needed (e.g., 3.5 not 3.5 cm)
 6. All {count} questions should be DIFFERENT and INTERESTING
 7. Mix difficulty within the level - some easier, some harder
+
+Format example:
+Q: If Sarah has 15 apples and gives 3 to her friend, how many does she have left?
+A: 12
+
+Q: 25 + 17 = ?
+A: 42
+
+Now generate {count} diverse, interesting, and well-formatted questions.
+
+REQUIREMENTS:
+- Be concise and avoid any extra text outside the Q/A pairs.
+- Use the exact Q/A format below and do not number the pairs.
+- Output should be as short as possible while following the format.
 
 Format example:
 Q: If Sarah has 15 apples and gives 3 to her friend, how many does she have left?

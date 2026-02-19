@@ -177,21 +177,42 @@ def show(user: str = "ella"):
     st.title(f"🧮 {user_upper}'s {st.session_state.primary_math_level} Math Practice")
     st.caption(LEVEL_DESCRIPTIONS.get(st.session_state.primary_math_level, ""))
 
-    # Generate questions if not already done
+    # Question style selection and explicit generation button
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🧭 Question Options")
+    question_style = st.sidebar.radio(
+        "Question style:",
+        ["Balanced (Mixed)", "Mostly Word Problems", "Mostly Calculations", "More Puzzles"],
+        index=0,
+        help="Choose the kind of questions to generate for this practice session."
+    )
+
+    count = st.sidebar.number_input("Number of questions:", min_value=1, max_value=20, value=10)
+
     if not st.session_state.primary_math_questions:
-        with st.spinner(f"Generating {st.session_state.primary_math_level} level questions..."):
-            llm = get_llm_helper_instance()
-            if llm:
-                try:
-                    questions = llm.generate_math_questions(st.session_state.primary_math_level, count=10)
-                    st.session_state.primary_math_questions = questions
-                    st.session_state.primary_math_answers = [""] * len(questions)
-                except Exception as e:
-                    st.error(f"Error generating questions: {e}")
+        if st.sidebar.button("🧩 Generate questions"):
+            with st.spinner(f"Generating {st.session_state.primary_math_level} level questions..."):
+                llm = get_llm_helper_instance()
+                if llm:
+                    try:
+                        # Use faster generation settings when possible
+                        questions = llm.generate_math_questions(
+                            st.session_state.primary_math_level,
+                            count=int(count),
+                            style=question_style,
+                            fast=True,
+                        )
+                        st.session_state.primary_math_questions = questions
+                        st.session_state.primary_math_answers = [""] * len(questions)
+                    except Exception as e:
+                        st.error(f"Error generating questions: {e}")
+                        return
+                else:
+                    st.error("LLM Helper not available")
                     return
-            else:
-                st.error("LLM Helper not available")
-                return
+        else:
+            st.info("Click 'Generate questions' in the sidebar to request questions from the LLM.")
+            return
 
     # Display questions with better layout
     st.subheader("📝 Solve these 10 questions:")
