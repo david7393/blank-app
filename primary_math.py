@@ -131,31 +131,6 @@ def show(user: str = "ella"):
     # ------------------- Sidebar Navigation -------------------
     st.sidebar.header(f"👤 {user_upper}'s Math Practice")
 
-    # Level selection
-    if st.session_state.primary_math_level is None:
-        st.sidebar.info("📚 Please select a level to start practice")
-        selected_level = st.sidebar.selectbox(
-            "📚 Select Level:",
-            LEVELS,
-            format_func=lambda x: LEVEL_DESCRIPTIONS.get(x, x),
-            key="level_select"
-        )
-    else:
-        selected_level = st.sidebar.selectbox(
-            "📚 Select Level:",
-            LEVELS,
-            index=LEVELS.index(st.session_state.primary_math_level),
-            format_func=lambda x: LEVEL_DESCRIPTIONS.get(x, x),
-            key="level_select"
-        )
-
-    if selected_level != st.session_state.primary_math_level:
-        st.session_state.primary_math_level = selected_level
-        st.session_state.primary_math_questions = []
-        st.session_state.primary_math_answers = []
-        st.session_state.primary_math_completed = False
-        st.rerun()
-
     # Calendar/History section
     st.sidebar.markdown("---")
     st.sidebar.subheader("📅 Practice History")
@@ -169,28 +144,44 @@ def show(user: str = "ella"):
         st.sidebar.write("No practice history yet")
 
     # ------------------- Main Content -------------------
+    # Level selection moved to main page
+    st.title(f"🧮 {user_upper}'s Math Practice")
+
     if st.session_state.primary_math_level is None:
-        st.title(f"🧮 {user_upper}'s Math Practice")
-        st.info("👈 Please select a difficulty level from the sidebar to begin!")
-        return
+        st.info("📚 Please select a level below to start practice")
+    # Present selectbox on main page
+    selected_level = st.selectbox(
+        "📚 Select Level:",
+        LEVELS,
+        index=(LEVELS.index(st.session_state.primary_math_level) if st.session_state.primary_math_level in LEVELS else 0),
+        format_func=lambda x: LEVEL_DESCRIPTIONS.get(x, x),
+        key="level_select_main"
+    )
+
+    if selected_level != st.session_state.primary_math_level:
+        st.session_state.primary_math_level = selected_level
+        st.session_state.primary_math_questions = []
+        st.session_state.primary_math_answers = []
+        st.session_state.primary_math_completed = False
+        st.experimental_rerun()
 
     st.title(f"🧮 {user_upper}'s {st.session_state.primary_math_level} Math Practice")
     st.caption(LEVEL_DESCRIPTIONS.get(st.session_state.primary_math_level, ""))
 
-    # Question style selection and explicit generation button
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🧭 Question Options")
-    question_style = st.sidebar.radio(
+    # Question style selection and explicit generation button moved to main page
+    st.markdown("---")
+    st.subheader("🧭 Question Options")
+    question_style = st.radio(
         "Question style:",
         ["Balanced (Mixed)", "Mostly Word Problems", "Mostly Calculations", "More Puzzles"],
         index=0,
         help="Choose the kind of questions to generate for this practice session."
     )
 
-    count = st.sidebar.number_input("Number of questions:", min_value=1, max_value=20, value=10)
+    count = st.number_input("Number of questions:", min_value=1, max_value=20, value=10)
 
     if not st.session_state.primary_math_questions:
-        if st.sidebar.button("🧩 Generate questions"):
+        if st.button("🧩 Generate questions"):
             with st.spinner(f"Generating {st.session_state.primary_math_level} level questions..."):
                 llm = get_llm_helper_instance()
                 if llm:
@@ -211,7 +202,7 @@ def show(user: str = "ella"):
                     st.error("LLM Helper not available")
                     return
         else:
-            st.info("Click 'Generate questions' in the sidebar to request questions from the LLM.")
+            st.info("Click 'Generate questions' to request questions from the LLM.")
             return
 
     # Display questions with better layout
