@@ -10,6 +10,8 @@ import json
 from datetime import datetime
 from llm_helper import get_llm_helper
 from snake_game import snake_game
+from parkour_game import parkour_game
+from flappy_game import flappy_game
 
 LEVELS = ["P1", "P2", "P3", "P4", "P5", "P6", "PLSE"]
 LEVEL_DESCRIPTIONS = {
@@ -252,16 +254,36 @@ def show(user: str = "ella"):
         # Unlock reward if perfect score
         if score == 10:
             st.session_state.primary_math_reward_unlocked = True
-            st.success("🎁 Perfect score! Reward game unlocked! Play snake game below:")
-            # Show snake game directly
-            st.markdown("---")
-            snake_game()
+            st.success("🎁 Perfect score! Reward games unlocked! Choose a game to play:")
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                if st.button("🐍 Snake Game"):
+                    st.markdown("---")
+                    snake_game()
+            with col2:
+                if st.button("🏃 Parkour"):
+                    st.markdown("---")
+                    parkour_game()
+            with col3:
+                if st.button("🐦 Flappy Bird"):
+                    st.markdown("---")
+                    flappy_game()
 
-    # Show reward game if already unlocked
+    # Show reward games if already unlocked
     if st.session_state.primary_math_reward_unlocked and st.session_state.primary_math_completed:
-        if st.button("🎮 Play Reward Game"):
-            st.markdown("---")
-            snake_game()
+        st.markdown("---")
+        st.subheader("🎮 Play More Games:")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("🐍 Play Snake"):
+                snake_game()
+        with col2:
+            if st.button("🏃 Play Parkour"):
+                parkour_game()
+        with col3:
+            if st.button("🐦 Play Flappy"):
+                flappy_game()
 
 
 if __name__ == "__main__":

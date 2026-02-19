@@ -23,7 +23,7 @@ if "page" not in st.session_state:
     st.session_state.page = "Home"
 
 # Build available pages. Home is the front page with buttons.
-pages = ["Home", "Ella", "Meimei", "Lucas", "Translate Chat"]
+pages = ["Home", "Ella", "Meimei", "Lucas", "Translate Chat", "News Analysis"]
 
 # Preserve the last selected page 
 current_page = st.session_state.get("page", "Home")
@@ -119,6 +119,16 @@ if page == "Translate Chat":
         translate_chat.main()
     except Exception as e:
         st.error(f"Failed to load Translate Chat page: {e}")
+        st.exception(e)
+    st.stop()
+
+# ------------------- News Analysis page -------------------
+if page == "News Analysis":
+    try:
+        import news_analysis
+        news_analysis.main()
+    except Exception as e:
+        st.error(f"Failed to load News Analysis page: {e}")
         st.exception(e)
     st.stop()
 
