@@ -8,15 +8,15 @@ def parkour_game():
     """
     html = r"""
     <div style='text-align:center'>
-      <canvas id='parkour' width='480' height='200' style='border:1px solid #ccc; background:#eaf6ff;'></canvas>
+      <canvas id='parkour' width='640' height='300' style='border:1px solid #ccc; background:#eaf6ff;'></canvas>
       <div style='margin-top:6px;font-size:12px;color:#333;'>Tap/click or press Space to jump. Survive as long as possible.</div>
     </div>
     <script>
     const canvas = document.getElementById('parkour');
     const ctx = canvas.getContext('2d');
-    let player = {x:50,y:150,w:20,h:30,vy:0,grav:0.9,ground:170};
+    let player = {x:50,y:220,w:20,h:30,vy:0,grav:0.9,ground:250};
     let obstacles = [];
-    let speed = 3;
+    let speed = 1.5;
     let tick = 0;
     let alive = true;
     let gameStarted = false;
@@ -24,7 +24,7 @@ def parkour_game():
 
     function spawn(){
       const h = 20 + Math.random()*40;
-      obstacles.push({x:480,y:170-h,w:20,h:h});
+      obstacles.push({x:640,y:250-h,w:20,h:h});
     }
 
     function jump(){
@@ -37,7 +37,7 @@ def parkour_game():
     function update(){
       if(!alive) return;
       if(tick%90===0){ spawn(); }
-      if(tick%600===0){ speed += 0.5; }
+      if(tick%600===0){ speed += 0.2; }
 
       player.vy += player.grav; player.y += player.vy;
       if(player.y > player.ground) { player.y = player.ground; player.vy = 0; }
@@ -45,8 +45,8 @@ def parkour_game():
       for(let i=obstacles.length-1;i>=0;i--){
         obstacles[i].x -= speed;
         if(obstacles[i].x + obstacles[i].w < 0) obstacles.splice(i,1);
-        // collision
-        if(player.x < obstacles[i].x + obstacles[i].w && player.x + player.w > obstacles[i].x && player.y < obstacles[i].y + obstacles[i].h && player.y + player.h > obstacles[i].y){
+        // collision - check visual bounds where player is drawn from (y - h) to y
+        if(player.x < obstacles[i].x + obstacles[i].w && player.x + player.w > obstacles[i].x && player.y > obstacles[i].y && player.y - player.h < obstacles[i].y + obstacles[i].h){
           alive = false;
         }
       }
@@ -103,7 +103,7 @@ def parkour_game():
     </script>
     """
 
-    st.components.v1.html(html, height=300)
+    st.components.v1.html(html, height=420)
 
 
 if __name__ == '__main__':

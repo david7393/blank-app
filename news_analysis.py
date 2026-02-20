@@ -5,23 +5,136 @@ from llm_helper import get_llm_helper
 
 def main():
     st.title('📣 News & Social Listening (Chinese Analysis)')
-    st.write('Enter a topic keyword or paste a news/video/article URL. The app will fetch (via LLM) a summary, key companies mentioned, and potential financial impact.')
+    
+    # Create two tabs: one for trending news, one for custom analysis
+    tab1, tab2 = st.tabs(["📈 Trending (Last 7 Days)", "🔍 Custom Analysis"])
+    
+    # -------  TAB 1: Trending News -------
+    with tab1:
+        st.subheader("🔥 Top 10 Most Popular News/Articles/Videos (Last 7 Days)")
+        
+        if st.button('📰 Fetch Top 10 Trending Items', key='fetch_trending'):
+            with st.spinner('Fetching trending items...'):
+                try:
+                    api_key = os.environ.get('OPENROUTER_API_KEY') or os.environ.get('DEEPSEEK_API_KEY')
+                    llm = get_llm_helper(api_key)
+                    
+                    prompt = """你是一位掌握最新熱點新聞、社交媒體趨勢與網路輿論的專家助理。
+請根據過去7天（包括今天）的全球與中文媒體、社交媒體趨勢，列出大約10個最受關注與最熱門的新聞/文章/影片/話題。
 
-    query = st.text_input('Topic / URL / Keyword', value='春晚 机器 人 Unitree 病毒 视频')
-    top_n = st.slider('How many items to analyse (approx.)', 1, 5, 3)
+對每一項請提供以下信息（用標準化格式）：
 
-    if st.button('🔎 Analyse'):
-        if not query.strip():
-            st.error('Please enter a query or URL')
-            return
+1. **標題**: [新聞/文章/影片標題]
+2. **媒體/來源**: [媒體名稱或社交平台]
+3. **熱度指數**: [1-10 分，代表受關注程度]
+4. **簡介**: [2-3句的簡短摘要，說明發生什麼事]
+5. **涉及公司/個人/組織**: [列出相關的主要方]
 
-        with st.spinner('Contacting LLM for analysis...'):
-            try:
-                api_key = os.environ.get('OPENROUTER_API_KEY') or os.environ.get('DEEPSEEK_API_KEY')
-                llm = get_llm_helper(api_key)
+用清晰的Markdown格式回覆，每一項用分隔線分開。不需要提供URL，因為這些是虛擬數據。"""
+                    
+                    response = llm.client.chat.completions.create(
+                        extra_headers={"HTTP-Referer": "http://localhost:8501", "X-Title": "News Analysis"},
+                        model=llm.model,
+                        messages=[{"role": "user", "content": prompt}],
+                        max_tokens=2000,
+                        temperature=0.3,
+                    )
+                    
+                    trending_text = response.choices[0].message.content.strip()
+                    
+                    # Store in session state for later use
+                    st.session_state.trending_news = trending_text
+                    
+                    # Display the trending items
+                    st.markdown("### 📋 熱門話題清單")
+                    st.markdown(trending_text)
+                    
+                except Exception as e:
+                    st.error(f'獲取熱門話題失敗：{e}')
+        
+        # Show stored trending news if available
+        if "trending_news" in st.session_state:
+            st.markdown("---")
+            st.markdown("### 📊 查看新聞對金融的影響")
+            
+            selected_news = st.text_area(
+                "📌 選擇或貼上你感興趣的新聞標題/內容，以分析其對金融市場的潛在影響",
+                placeholder="例如：春晚機器人表演引發熱議...",
+                height=100
+            )
+            
+            if st.button('💹 分析財經影響', key='analyze_impact'):
+                if not selected_news.strip():
+                    st.error('請選擇或輸入新聞內容')
+                    return
+                
+                with st.spinner('分析財經影響中...'):
+                    try:
+                        api_key = os.environ.get('OPENROUTER_API_KEY') or os.environ.get('DEEPSEEK_API_KEY')
+                        llm = get_llm_helper(api_key)
+                        
+                        prompt = f"""你是一位資深的金融分析專家，擅長評估新聞事件對各類金融產品的潛在影響。
 
-                prompt = f"""
-你是一位能閱讀最新熱點、擅長中文評論與財經風險分析的助理。
+請根據以下新聞內容分析對金融市場的影響：
+
+【新聞內容】
+{selected_news}
+
+請從以下角度進行分析：
+
+1. **對列舉公司股價的潛在影響**:
+   - 直接受益或受害的公司（列出2-5家）
+   - 對每家公司的影響評估（正面/中性/負面）
+   - 簡短說明原因（1-2句）
+
+2. **對主要金融產品的影響**:
+   - 貴金屬（黃金/白銀）: 影響評估 + 原因
+   - 主要指數（恆生指數/滬深300/納斯達克等）: 影響評估 + 原因
+   - 能源商品（石油/天然氣）: 影響評估 + 原因
+   - 匯率走勢: 影響評估 + 原因
+
+3. **風險評估**:
+   - 事件發展的幾種可能情境及其金融影響
+   - 關鍵監控指標（3-5項）
+
+用清晰的中文回覆，保持簡潔（總共不超過 800 字）。"""
+                        
+                        response = llm.client.chat.completions.create(
+                            extra_headers={"HTTP-Referer": "http://localhost:8501", "X-Title": "Financial Impact Analysis"},
+                            model=llm.model,
+                            messages=[{"role": "user", "content": prompt}],
+                            max_tokens=1200,
+                            temperature=0.2,
+                        )
+                        
+                        impact_analysis = response.choices[0].message.content.strip()
+                        
+                        st.markdown("---")
+                        st.markdown("### 💰 財經影響分析結果")
+                        st.markdown(impact_analysis)
+                        
+                    except Exception as e:
+                        st.error(f'財經影響分析失敗：{e}')
+    
+    # ------- TAB 2: Custom Analysis -------
+    with tab2:
+        st.subheader("🔎 自訂新聞/話題分析")
+        st.write('輸入一個話題關鍵字或貼上新聞/影片/文章URL，AI 將為您進行分析和財經影響評估。')
+        
+        query = st.text_input('話題 / URL / 關鍵字 / 新聞標題', value='')
+        top_n = st.slider('分析相關項目數量（約）', 1, 5, 3)
+
+        if st.button('🔎 開始分析', key='custom_analyze'):
+            if not query.strip():
+                st.error('請輸入查詢內容')
+                return
+
+            with st.spinner('正在聯繫 LLM 進行分析...'):
+                try:
+                    api_key = os.environ.get('OPENROUTER_API_KEY') or os.environ.get('DEEPSEEK_API_KEY')
+                    llm = get_llm_helper(api_key)
+
+                    prompt = f"""你是一位能閱讀最新熱點、擅長中文評論與財經風險分析的助理。
 請根據以下關鍵字或連結: "{query}" ，列出大約 {top_n} 個最相關的熱門文章/影片/直播標題（假設目前網路熱度高），
 對每一條給出：
 1) 中文摘要（簡短2-3句）
@@ -29,24 +142,23 @@ def main():
 3) 對相關公司股價或金融產品的潛在影響評估（簡短：正面/中性/負面，並說明原因）
 4) 若要追蹤此事件，建議監控哪些關鍵詞或指標（最多3項）
 
-請用中文回覆，條列清晰，保持簡潔（每項不超過 5 行）。
-"""
+請用中文回覆，條列清晰，保持簡潔（每項不超過 5 行）。"""
 
-                response = llm.client.chat.completions.create(
-                    extra_headers={"HTTP-Referer": "http://localhost:8501", "X-Title": "News Analysis"},
-                    model=llm.model,
-                    messages=[{"role": "user", "content": prompt}],
-                    max_tokens=800,
-                    temperature=0.2,
-                )
+                    response = llm.client.chat.completions.create(
+                        extra_headers={"HTTP-Referer": "http://localhost:8501", "X-Title": "News Analysis"},
+                        model=llm.model,
+                        messages=[{"role": "user", "content": prompt}],
+                        max_tokens=1000,
+                        temperature=0.2,
+                    )
 
-                text = response.choices[0].message.content.strip()
-                st.markdown('---')
-                st.subheader('分析結果（中文）')
-                st.code(text, language='text')
+                    text = response.choices[0].message.content.strip()
+                    st.markdown('---')
+                    st.subheader('📊 分析結果（中文）')
+                    st.markdown(text)
 
-            except Exception as e:
-                st.error(f'分析失敗：{e}')
+                except Exception as e:
+                    st.error(f'分析失敗：{e}')
 
 
 if __name__ == '__main__':

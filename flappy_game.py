@@ -5,16 +5,17 @@ def flappy_game():
     """Simple Flappy-like game embedded via HTML/JS canvas.
     Tap/click or press space to make the bird flap.
     Features 5-second countdown and improved bird graphics.
+    Slower movement speed than parkour for easier gameplay.
     """
     html = r"""
     <div style='text-align:center'>
-      <canvas id='flappy' width='400' height='300' style='border:1px solid #ccc; background:#87ceeb;'></canvas>
+      <canvas id='flappy' width='540' height='360' style='border:1px solid #ccc; background:#87ceeb;'></canvas>
       <div style='margin-top:6px;font-size:12px;color:#333;'>Tap/click or press Space to flap. Pass through gaps to score.</div>
     </div>
     <script>
     const canvas = document.getElementById('flappy');
     const ctx = canvas.getContext('2d');
-    let bird = {x:80,y:150,r:12,vy:0,grav:0.6};
+    let bird = {x:80,y:180,r:12,vy:0,grav:0.4};
     let pipes = [];
     let frame = 0;
     let score = 0;
@@ -23,11 +24,11 @@ def flappy_game():
     let countdownTime = 5;
 
     function spawnPipe(){
-      let gap = 90; let top = Math.random()*(canvas.height-200)+20;
+      let gap = 120; let top = Math.random()*(canvas.height-280)+40;
       pipes.push({x:canvas.width,y:0,w:40,top:top,gap:gap});
     }
 
-    function flap(){ if(!alive || !gameStarted) return; bird.vy = -9; }
+    function flap(){ if(!alive || !gameStarted) return; bird.vy = -7; }
     document.addEventListener('keydown', e=>{ if(e.code==='Space') flap(); });
     canvas.addEventListener('click', flap);
 
@@ -59,24 +60,24 @@ def flappy_game():
       ctx.restore();
     }
 
-    function update(){ if(!alive || !gameStarted) return; frame++; if(frame%90===0) spawnPipe(); bird.vy+=bird.grav; bird.y+=bird.vy; if(bird.y+bird.r>canvas.height || bird.y-bird.r<0) alive=false;
-      for(let i=pipes.length-1;i>=0;i--){ pipes[i].x-=2.5; if(pipes[i].x + pipes[i].w < 0){ pipes.splice(i,1); score++; } }
+    function update(){ if(!alive || !gameStarted) return; frame++; if(frame%120===0) spawnPipe(); bird.vy+=bird.grav; bird.y+=bird.vy; if(bird.y+bird.r>canvas.height || bird.y-bird.r<0) alive=false;
+      for(let i=pipes.length-1;i>=0;i--){ pipes[i].x-=1.2; if(pipes[i].x + pipes[i].w < 0){ pipes.splice(i,1); score++; } }
       // collisions
       for(let p of pipes){ if(bird.x+bird.r > p.x && bird.x-bird.r < p.x + p.w){ if(bird.y - bird.r < p.top || bird.y + bird.r > p.top + p.gap){ alive=false; } } }
-      if(bird.y > canvas.height - 40) alive = false;
+      if(bird.y > canvas.height - 50) alive = false;
     }
 
     function draw(){
       ctx.clearRect(0,0,canvas.width,canvas.height);
       ctx.fillStyle='#ffd700';
-      ctx.fillRect(0,canvas.height-40,canvas.width,40); // ground
+      ctx.fillRect(0,canvas.height-50,canvas.width,50); // ground
       // bird with better graphics
       drawBird();
       // pipes
       ctx.fillStyle='#228B22';
       for(let p of pipes){
         ctx.fillRect(p.x,p.top,p.w,p.gap);
-        ctx.fillRect(p.x,p.top+p.gap+60,p.w,canvas.height-(p.top+p.gap+60)-40);
+        ctx.fillRect(p.x,p.top+p.gap+80,p.w,canvas.height-(p.top+p.gap+80)-50);
       }
       // Score and countdown
       ctx.fillStyle='#000';
@@ -88,7 +89,7 @@ def flappy_game():
         ctx.fillRect(0,0,canvas.width,canvas.height);
         ctx.fillStyle='#fff';
         ctx.font='20px sans-serif';
-        ctx.fillText('Game Over - Refresh to Play Again',30,140);
+        ctx.fillText('Game Over - Refresh to Play Again',80,170);
       }
     }
 
@@ -108,7 +109,7 @@ def flappy_game():
     </script>
     """
 
-    st.components.v1.html(html, height=360)
+    st.components.v1.html(html, height=420)
 
 
 if __name__ == '__main__':
