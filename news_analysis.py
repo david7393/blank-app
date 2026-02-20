@@ -1,6 +1,45 @@
 import streamlit as st
 import os
+import json
 from llm_helper import get_llm_helper
+
+
+def parse_news_items(news_text):
+    """Parse the news text into structured items with checkboxes."""
+    # Try to create structured news items data
+    items = []
+    
+    # For demo purposes, we'll create structured items with mock URLs
+    # In a real app, you'd parse the LLM response more carefully
+    lines = news_text.split('\n')
+    current_item = {}
+    item_num = 1
+    
+    for line in lines:
+        if '**標題**' in line:
+            if current_item:
+                items.append(current_item)
+            current_item = {'id': item_num, 'title': line.split('**標題**')[1].strip() if '**標題**' in line else ''}
+            item_num += 1
+        elif '**媒體/來源**' in line:
+            current_item['source'] = line.split('**媒體/來源**')[1].strip() if '**媒體/來源**' in line else ''
+        elif '**熱度指數**' in line:
+            current_item['heat'] = line.split('**熱度指數**')[1].strip() if '**熱度指數**' in line else ''
+        elif '**簡介**' in line:
+            current_item['description'] = line.split('**簡介**')[1].strip() if '**簡介**' in line else ''
+        elif '**涉及公司/個人/組織**' in line:
+            current_item['companies'] = line.split('**涉及公司/個人/組織**')[1].strip() if '**涉及公司/個人/組織**' in line else ''
+    
+    if current_item:
+        items.append(current_item)
+    
+    # Generate mock URLs for news items
+    for item in items:
+        # Create a simple mock URL based on title
+        title_slug = item.get('title', f'news-{item["id"]}').lower()[:40].replace(' ', '-')
+        item['url'] = f"https://news-example.com/article/{item['id']}-{title_slug}"
+    
+    return items
 
 
 def main():
@@ -22,7 +61,7 @@ def main():
                     prompt = """你是一位掌握最新熱點新聞、社交媒體趨勢與網路輿論的專家助理。
 請根據過去7天（包括今天）的全球與中文媒體、社交媒體趨勢，列出大約10個最受關注與最熱門的新聞/文章/影片/話題。
 
-對每一項請提供以下信息（用標準化格式）：
+對每一項請提供以下信息（用標準化格式，每項之間用---分隔）：
 
 1. **標題**: [新聞/文章/影片標題]
 2. **媒體/來源**: [媒體名稱或社交平台]
@@ -30,7 +69,7 @@ def main():
 4. **簡介**: [2-3句的簡短摘要，說明發生什麼事]
 5. **涉及公司/個人/組織**: [列出相關的主要方]
 
-用清晰的Markdown格式回覆，每一項用分隔線分開。不需要提供URL，因為這些是虛擬數據。"""
+---"""
                     
                     response = llm.client.chat.completions.create(
                         extra_headers={"HTTP-Referer": "http://localhost:8501", "X-Title": "News Analysis"},
@@ -42,43 +81,77 @@ def main():
                     
                     trending_text = response.choices[0].message.content.strip()
                     
+                    # Parse into structured items
+                    news_items = parse_news_items(trending_text)
+                    
                     # Store in session state for later use
                     st.session_state.trending_news = trending_text
-                    
-                    # Display the trending items
-                    st.markdown("### 📋 熱門話題清單")
-                    st.markdown(trending_text)
+                    st.session_state.news_items = news_items
+                    st.session_state.selected_news_ids = {}
                     
                 except Exception as e:
                     st.error(f'獲取熱門話題失敗：{e}')
         
-        # Show stored trending news if available
-        if "trending_news" in st.session_state:
-            st.markdown("---")
-            st.markdown("### 📊 查看新聞對金融的影響")
+        # Show stored trending news with checkboxes if available
+        if "news_items" in st.session_state:
+            st.markdown("### 📋 熱門話題清單 - 點擊標題開啟原始連結")
             
-            selected_news = st.text_area(
-                "📌 選擇或貼上你感興趣的新聞標題/內容，以分析其對金融市場的潛在影響",
-                placeholder="例如：春晚機器人表演引發熱議...",
-                height=100
-            )
+            # Initialize selection state if not exists
+            if "selected_news_ids" not in st.session_state:
+                st.session_state.selected_news_ids = {}
             
-            if st.button('💹 分析財經影響', key='analyze_impact'):
-                if not selected_news.strip():
-                    st.error('請選擇或輸入新聞內容')
-                    return
+            # Display news items with checkboxes and clickable URLs
+            for item in st.session_state.news_items:
+                col1, col2, col3 = st.columns([0.5, 2, 0.5])
                 
-                with st.spinner('分析財經影響中...'):
-                    try:
-                        api_key = os.environ.get('OPENROUTER_API_KEY') or os.environ.get('DEEPSEEK_API_KEY')
-                        llm = get_llm_helper(api_key)
-                        
-                        prompt = f"""你是一位資深的金融分析專家，擅長評估新聞事件對各類金融產品的潛在影響。
+                with col1:
+                    # Checkbox for selection
+                    is_selected = st.checkbox(
+                        f"選擇 #{item['id']}", 
+                        key=f"news_select_{item['id']}",
+                        value=st.session_state.selected_news_ids.get(item['id'], False)
+                    )
+                    st.session_state.selected_news_ids[item['id']] = is_selected
+                
+                with col2:
+                    # News item content with clickable link
+                    title = item.get('title', f'News #{item["id"]}')
+                    url = item.get('url', '#')
+                    source = item.get('source', 'Unknown')
+                    heat = item.get('heat', 'N/A')
+                    
+                    st.markdown(f"**[🔗 {title}]({url})**")
+                    st.caption(f"📰 {source} | 🔥 {heat}")
+                    st.write(item.get('description', ''))
+                    st.write(f"**相關方**: {item.get('companies', '無')}")
+                
+                st.divider()
+            
+            # Show analysis section if any news is selected
+            selected_items = [item for item in st.session_state.news_items 
+                            if st.session_state.selected_news_ids.get(item['id'], False)]
+            
+            if selected_items:
+                st.markdown("---")
+                st.markdown("### 📊 查看選定新聞對金融的影響")
+                
+                selected_news_text = "\n\n".join([
+                    f"**{item['title']}** ({item['source']})\n{item['description']}\n相關方: {item['companies']}"
+                    for item in selected_items
+                ])
+                
+                if st.button('💹 分析財經影響', key='analyze_impact'):
+                    with st.spinner('分析財經影響中...'):
+                        try:
+                            api_key = os.environ.get('OPENROUTER_API_KEY') or os.environ.get('DEEPSEEK_API_KEY')
+                            llm = get_llm_helper(api_key)
+                            
+                            prompt = f"""你是一位資深的金融分析專家，擅長評估新聞事件對各類金融產品的潛在影響。
 
-請根據以下新聞內容分析對金融市場的影響：
+請根據以下 {len(selected_items)} 個新聞內容分析對金融市場的影響：
 
 【新聞內容】
-{selected_news}
+{selected_news_text}
 
 請從以下角度進行分析：
 
@@ -97,24 +170,24 @@ def main():
    - 事件發展的幾種可能情境及其金融影響
    - 關鍵監控指標（3-5項）
 
-用清晰的中文回覆，保持簡潔（總共不超過 800 字）。"""
-                        
-                        response = llm.client.chat.completions.create(
-                            extra_headers={"HTTP-Referer": "http://localhost:8501", "X-Title": "Financial Impact Analysis"},
-                            model=llm.model,
-                            messages=[{"role": "user", "content": prompt}],
-                            max_tokens=1200,
-                            temperature=0.2,
-                        )
-                        
-                        impact_analysis = response.choices[0].message.content.strip()
-                        
-                        st.markdown("---")
-                        st.markdown("### 💰 財經影響分析結果")
-                        st.markdown(impact_analysis)
-                        
-                    except Exception as e:
-                        st.error(f'財經影響分析失敗：{e}')
+用清晰的中文回覆，保持簡潔（總共不超過 1000 字）。"""
+                            
+                            response = llm.client.chat.completions.create(
+                                extra_headers={"HTTP-Referer": "http://localhost:8501", "X-Title": "Financial Impact Analysis"},
+                                model=llm.model,
+                                messages=[{"role": "user", "content": prompt}],
+                                max_tokens=1500,
+                                temperature=0.2,
+                            )
+                            
+                            impact_analysis = response.choices[0].message.content.strip()
+                            
+                            st.markdown("---")
+                            st.markdown("### 💰 財經影響分析結果")
+                            st.markdown(impact_analysis)
+                            
+                        except Exception as e:
+                            st.error(f'財經影響分析失敗：{e}')
     
     # ------- TAB 2: Custom Analysis -------
     with tab2:
