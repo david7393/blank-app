@@ -32,7 +32,8 @@ class LLMHelper:
             base_url="https://openrouter.ai/api/v1",
             api_key=api_key
         )
-        self.model ="qwen/qwen3-coder:free"
+        self.model = "openai/gpt-oss-120b:free"
+        # self.model ="qwen/qwen3-coder:free"
         # self.model ="qwen/qwen3-next-80b-a3b-instruct:free"
         # self.model = "deepseek/deepseek-r1-0528:free"
         self.last_error: Optional[str] = None
